@@ -98,12 +98,20 @@ export const cancelUpgradeMsg = () => (
 
 export const deployWithProxyMsg = () => (
   <div>
-    NOTE: Deploy With Proxy will initiate two (2) transactions. The first is for the deployment of your implementation contract and the second will be a deployment of an ERC1967 proxy contract.
+   <b>Deploy with Proxy</b> will initiate two (2) transactions:
+    <ul className="pl-3">
+      <li>The 1st txn is for deploying the implementation contract</li>
+      <li>The 2nd txn is for deploying an ERC1967 proxy contract</li>
+    </ul>
   </div>
 )
 
 export const upgradeWithProxyMsg = () => (
   <div>
-    NOTE: Upgrade With Proxy will initiate two (2) transactions. The first is for the deployment of your implementation contract and the second will intiate a call to the upgradeTo function in your proxy contract.
+    <b>Upgrade With Proxy</b> will initiate two (2) transactions:
+    <ul className="pl-3">
+      <li>the 1st txn is for deploying of the new implementation contract</li>
+      <li>the 2nd txn updates the proxy contract with the address of the new implementation contract</li>
+    </ul>
   </div>
 )
