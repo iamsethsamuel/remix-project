@@ -9,7 +9,7 @@ import { QueryParams } from '@remix-project/remix-lib'
 import * as packageJson from '../../../../../package.json'
 import { compilerConfigChangedToastMsg, compileToastMsg } from '@remix-ui/helper'
 import { isNative } from '../../remixAppManager'
-
+import { Registry } from '@remix-project/remix-lib'
 const profile = {
   name: 'solidity',
   displayName: 'Solidity compiler',
@@ -21,7 +21,7 @@ const profile = {
   documentation: 'https://remix-ide.readthedocs.io/en/latest/compile.html',
   version: packageJson.version,
   maintainedBy: 'Remix',
-  methods: ['getCompilationResult', 'compile', 'compileWithParameters', 'setCompilerConfig', 'compileFile', 'getCompilerState', 'getCompilerParameters', 'getCompiler']
+  methods: ['getCompilationResult', 'compile', 'compileWithParameters', 'setCompilerConfig', 'compileFile', 'getCompilerState', 'getCompilerQueryParameters', 'getCompiler']
 }
 
 // EditorApi:
@@ -90,6 +90,10 @@ class CompileTab extends CompilerApiMixin(ViewPlugin) { // implements ICompilerA
     return this.fileManager.mode
   }
 
+  isDesktop () {
+    return Registry.getInstance().get('platform').api.isDesktop()
+  }
+
   /**
    * set the compiler configuration
    * This function is used by remix-plugin compiler API.
@@ -123,7 +127,8 @@ class CompileTab extends CompilerApiMixin(ViewPlugin) { // implements ICompilerA
         type: [],
         extension: ['.sol'],
         path: [],
-        pattern: []
+        pattern: [],
+        group: 6
       })
     })
     try {
@@ -137,7 +142,7 @@ class CompileTab extends CompilerApiMixin(ViewPlugin) { // implements ICompilerA
     return this.compileTabLogic.compiler
   }
 
-  getCompilerParameters () {
+  getCompilerQueryParameters () {
     const params = this.queryParams.get()
     params.evmVersion = params.evmVersion === 'null' || params.evmVersion === 'undefined' ? null : params.evmVersion
     params.optimize = (params.optimize === 'false' || params.optimize === null || params.optimize === undefined) ? false : params.optimize
@@ -145,7 +150,7 @@ class CompileTab extends CompilerApiMixin(ViewPlugin) { // implements ICompilerA
     return params
   }
 
-  setCompilerParameters (params) {
+  setCompilerQueryParameters (params) {
     this.queryParams.update(params)
   }
 

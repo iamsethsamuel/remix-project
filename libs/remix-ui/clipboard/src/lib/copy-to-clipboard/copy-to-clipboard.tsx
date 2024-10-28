@@ -6,17 +6,18 @@ import './copy-to-clipboard.css'
 import { CustomTooltip } from '@remix-ui/helper'
 
 interface ICopyToClipboard {
-  content?: any,
-  tip?: string,
-  icon?: string,
-  direction?: Placement,
-  className?: string,
-  title?: string,
-  children?: JSX.Element,
+  content?: any
+  tip?: string
+  icon?: string
+  direction?: Placement
+  className?: string
+  title?: string
+  children?: JSX.Element
   getContent?: () => any
+  callback?: () => void
 }
 export const CopyToClipboard = (props: ICopyToClipboard) => {
-  const { tip = 'Copy', icon = 'fa-copy', direction = 'right', getContent, children, ...otherProps } = props
+  const { tip = 'Copy', icon = 'fa-copy', direction = 'right', getContent, children, callback, ...otherProps } = props
   let { content } = props
   const [message, setMessage] = useState(tip)
 
@@ -29,6 +30,7 @@ export const CopyToClipboard = (props: ICopyToClipboard) => {
       if (typeof content !== 'string') {
         content = JSON.stringify(content, null, '\t')
       }
+      callback && callback()
       copy(content)
       setMessage('Copied')
     } catch (e) {
@@ -37,12 +39,14 @@ export const CopyToClipboard = (props: ICopyToClipboard) => {
   }
 
   const handleClick = (e: any) => {
-    if (content) { // module `copy` keeps last copied thing in the memory, so don't show tooltip if nothing is copied, because nothing was added to memory
+    if (content) {
+      // module `copy` keeps last copied thing in the memory, so don't show tooltip if nothing is copied, because nothing was added to memory
       copyData()
     } else {
       content = getContent && getContent()
       copyData()
     }
+    e.stopPropagation()
     e.preventDefault()
   }
 
@@ -50,19 +54,11 @@ export const CopyToClipboard = (props: ICopyToClipboard) => {
     setTimeout(() => setMessage(tip), 500)
   }
 
-  const childJSX = (
-    children || (<i className={`far ${icon} ml-1 p-2`} aria-hidden="true"
-            {...otherProps}
-          ></i>)
-  )
+  const childJSX = children || <i className={`far ${icon} ml-1 p-2`} aria-hidden="true" {...otherProps}></i>
 
   return (
-    <a href='#' onClick={handleClick} onMouseLeave={reset}>
-      <CustomTooltip
-        tooltipText={message}
-        tooltipId="overlay-tooltip"
-        placement={direction}
-      >
+    <a href="#" onClick={handleClick} onMouseLeave={reset}>
+      <CustomTooltip tooltipText={message} tooltipId="overlay-tooltip" placement={direction}>
         {childJSX}
       </CustomTooltip>
     </a>

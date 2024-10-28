@@ -1,19 +1,31 @@
 import { envChangeNotification } from "@remix-ui/helper"
 import { RunTab } from "../types/run-tab"
 import { setExecutionContext, setFinalContext, updateAccountBalances, fillAccountsList } from "./account"
-import { addExternalProvider, addInstance, addNewProxyDeployment, removeExternalProvider, setNetworkNameFromProvider } from "./actions"
+import { addExternalProvider, addInstance, addNewProxyDeployment, removeExternalProvider, setNetworkNameFromProvider, setPinnedChainId } from "./actions"
 import { addDeployOption, clearAllInstances, clearRecorderCount, fetchContractListSuccess, resetProxyDeployments, resetUdapp, setCurrentContract, setCurrentFile, setLoadType, setRecorderCount, setRemixDActivated, setSendValue, fetchAccountsListSuccess } from "./payload"
 import { updateInstanceBalance } from './deploy'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
 import BN from 'bn.js'
-import Web3 from 'web3'
+import { Web3 } from 'web3'
 import { Plugin } from "@remixproject/engine"
 import { getNetworkProxyAddresses } from "./deploy"
 import { shortenAddress } from "@remix-ui/helper"
 
 const _paq = window._paq = window._paq || []
+let dispatch: React.Dispatch<any> = () => {}
 
-export const setupEvents = (plugin: RunTab, dispatch: React.Dispatch<any>) => {
+export const setEventsDispatch = (reducerDispatch: React.Dispatch<any>) => {
+  dispatch = reducerDispatch
+}
+
+export const setupEvents = (plugin: RunTab) => {
+  // This maintains current network state and update the pinned contracts list,
+  // only when there is a change in provider or in chain id for same provider
+  // as 'networkStatus' is triggered in each 10 seconds
+  const currentNetwork = {
+    provider: null,
+    chainId: null
+  }
   plugin.blockchain.events.on('newTransaction', (tx, receipt) => {
     plugin.emit('newTransaction', tx, receipt)
   })
@@ -25,15 +37,22 @@ export const setupEvents = (plugin: RunTab, dispatch: React.Dispatch<any>) => {
     updateInstanceBalance(plugin, dispatch)
   })
 
-  plugin.blockchain.event.register('contextChanged', (context) => {
+  plugin.blockchain.event.register('contextChanged', async (context) => {
     dispatch(resetProxyDeployments())
     if (!context.startsWith('vm')) getNetworkProxyAddresses(plugin, dispatch)
+    if (context !== 'walletconnect') {
+      (await plugin.call('manager', 'isActive', 'walletconnect')) && plugin.call('manager', 'deactivatePlugin', 'walletconnect')
+    }
     setFinalContext(plugin, dispatch)
     fillAccountsList(plugin, dispatch)
-    updateAccountBalances(plugin, dispatch)
+    // 'contextChanged' & 'networkStatus' both are triggered on workspace & network change
+    // There is chance that pinned contracts state is overrided by othe event
+    // We load pinned contracts for VM environment in this event
+    // and for other environments in 'networkStatus' event
+    if (context.startsWith('vm')) await loadPinnedContracts(plugin, dispatch, context)
   })
 
-  plugin.blockchain.event.register('networkStatus', ({ error, network }) => {
+  plugin.blockchain.event.register('networkStatus', async ({ error, network }) => {
     if (error) {
       const netUI = 'can\'t detect network'
       setNetworkNameFromProvider(dispatch, netUI)
@@ -41,14 +60,25 @@ export const setupEvents = (plugin: RunTab, dispatch: React.Dispatch<any>) => {
       return
     }
     const networkProvider = plugin.networkModule.getNetworkProvider.bind(plugin.networkModule)
-    const netUI = !networkProvider().startsWith('vm') ? `${network.name} (${network.id || '-'}) network` : 'VM'
-
+    const isVM = networkProvider().startsWith('vm') ? true : false
+    const netUI = !isVM ? `${network.name} (${network.id || '-'}) network` : 'VM'
+    const pinnedChainId = !isVM ? network.id : networkProvider()
     setNetworkNameFromProvider(dispatch, netUI)
+    setPinnedChainId(dispatch, pinnedChainId)
+
+    // Check if provider is changed or network is changed for same provider e.g; Metamask
+    if (currentNetwork.provider !== networkProvider() || (!isVM && currentNetwork.chainId !== network.id)) {
+      currentNetwork.provider = networkProvider()
+      if (!isVM) {
+        currentNetwork.chainId = network.id
+        await loadPinnedContracts(plugin, dispatch, pinnedChainId)
+      }
+    }
   })
 
-  plugin.blockchain.event.register('addProvider', provider => addExternalProvider(dispatch, provider))
+  plugin.on('blockchain', 'shouldAddProvidertoUdapp', (name, provider) => addExternalProvider(dispatch, provider))
 
-  plugin.blockchain.event.register('removeProvider', name => removeExternalProvider(dispatch, name))
+  plugin.on('blockchain', 'shouldRemoveProviderFromUdapp', (name, provider) => removeExternalProvider(dispatch, name))
 
   plugin.blockchain.events.on('newProxyDeployment', (address, date, contractName) => addNewProxyDeployment(dispatch, address, date, contractName))
 
@@ -77,21 +107,42 @@ export const setupEvents = (plugin: RunTab, dispatch: React.Dispatch<any>) => {
     dispatch(clearAllInstances())
   })
 
-  plugin.on('udapp', 'addInstanceReducer', (address, abi, name) => {
-    addInstance(dispatch, { abi, address, name })
+  plugin.on('udapp', 'addInstanceReducer', (address, abi, name, contractData?) => {
+    addInstance(dispatch, { contractData, abi, address, name })
   })
 
-  plugin.on('filePanel', 'setWorkspace', () => {
+  plugin.on('filePanel', 'setWorkspace', async () => {
     dispatch(resetUdapp())
     resetAndInit(plugin)
+    await migrateSavedContracts(plugin)
     plugin.call('manager', 'isActive', 'remixd').then((activated) => {
       dispatch(setRemixDActivated(activated))
     })
   })
 
-  plugin.on('manager', 'pluginActivated', (plugin: Plugin) => {
-    if (plugin.name === 'remixd') {
+  plugin.on('manager', 'pluginActivated', (activatedPlugin: Plugin) => {
+    if (activatedPlugin.name === 'remixd') {
       dispatch(setRemixDActivated(true))
+    } else {
+      if (activatedPlugin && activatedPlugin.name.startsWith('injected')) {
+        plugin.on(activatedPlugin.name, 'accountsChanged', (accounts: Array<string>) => {
+          const accountsMap = {}
+          accounts.map(account => { accountsMap[account] = shortenAddress(account, '0')})
+          dispatch(fetchAccountsListSuccess(accountsMap))
+        })
+      } else if (activatedPlugin && activatedPlugin.name === 'walletconnect') {
+        plugin.on('walletconnect', 'accountsChanged', async (accounts: Array<string>) => {
+          const accountsMap = {}
+
+          await Promise.all(accounts.map(async (account) => {
+            const balance = await plugin.blockchain.getBalanceInEther(account)
+            const updated = shortenAddress(account, balance)
+
+            accountsMap[account] = updated
+          }))
+          dispatch(fetchAccountsListSuccess(accountsMap))
+        })
+      }
     }
   })
 
@@ -101,7 +152,7 @@ export const setupEvents = (plugin: RunTab, dispatch: React.Dispatch<any>) => {
     }
   })
 
-  plugin.fileManager.events.on('currentFileChanged', (currentFile: string) => {
+  plugin.on('fileManager', 'currentFileChanged', (currentFile: string) => {
     if (/.(.abi)$/.exec(currentFile)) {
       dispatch(setLoadType('abi'))
     } else if (/.(.sol)$/.exec(currentFile) ||
@@ -123,22 +174,52 @@ export const setupEvents = (plugin: RunTab, dispatch: React.Dispatch<any>) => {
     dispatch(clearRecorderCount())
   })
 
-  plugin.on('injected', 'accountsChanged', (accounts: Array<string>) => {
-    const accountsMap = {}
-    accounts.map(account => { accountsMap[account] = shortenAddress(account, '0')})
-    dispatch(fetchAccountsListSuccess(accountsMap))
-  })
-
-  plugin.on('injected-trustwallet', 'accountsChanged', (accounts: Array<string>) => {
-    const accountsMap = {}
-    accounts.map(account => { accountsMap[account] = shortenAddress(account, '0')})
-    dispatch(fetchAccountsListSuccess(accountsMap))
-  })
-
   setInterval(() => {
     fillAccountsList(plugin, dispatch)
     updateInstanceBalance(plugin, dispatch)
-  }, 30000)  
+  }, 30000)
+}
+
+const loadPinnedContracts = async (plugin, dispatch, dirName) => {
+  await plugin.call('udapp', 'clearAllInstances')
+  const isPinnedAvailable = await plugin.call('fileManager', 'exists', `.deploys/pinned-contracts/${dirName}`)
+  if (isPinnedAvailable) {
+    try {
+      const list = await plugin.call('fileManager', 'readdir', `.deploys/pinned-contracts/${dirName}`)
+      const filePaths = Object.keys(list)
+      for (const file of filePaths) {
+        const pinnedContract = await plugin.call('fileManager', 'readFile', file)
+        const pinnedContractObj = JSON.parse(pinnedContract)
+        pinnedContractObj.isPinned = true
+        if (pinnedContractObj) addInstance(dispatch, pinnedContractObj)
+      }
+    } catch (err) {
+      console.log(err)
+    }
+  }
+}
+
+const migrateSavedContracts = async (plugin) => {
+  // Move contract saved in localstorage to Remix FE
+  const allSavedContracts = localStorage.getItem('savedContracts')
+  if (allSavedContracts) {
+    const savedContracts = JSON.parse(allSavedContracts)
+    for (const networkId in savedContracts) {
+      if (savedContracts[networkId].length > 0) {
+        for (const contractDetails of savedContracts[networkId]) {
+          const objToSave = {
+            name: contractDetails.name,
+            address: contractDetails.address,
+            abi: contractDetails.abi || contractDetails.contractData.abi,
+            filePath: contractDetails.filePath,
+            pinnedAt: contractDetails.savedOn
+          }
+          await plugin.call('fileManager', 'writeFile', `.deploys/pinned-contracts/${networkId}/${contractDetails.address}.json`, JSON.stringify(objToSave, null, 2))
+        }
+      }
+    }
+    localStorage.removeItem('savedContracts')
+  }
 }
 
 const broadcastCompilationResult = async (compilerName: string, plugin: RunTab, dispatch: React.Dispatch<any>, file, source, languageVersion, data, input?) => {
@@ -162,7 +243,7 @@ const broadcastCompilationResult = async (compilerName: string, plugin: RunTab, 
 
   if (isUpgradeable) {
     const options = await plugin.call('openzeppelin-proxy', 'getProxyOptions', data, file)
-  
+
     dispatch(addDeployOption({ [file]: options }))
   } else {
     dispatch(addDeployOption({ [file]: {} }))
@@ -177,7 +258,7 @@ const getCompiledContracts = (compiler) => {
 
   compiler.visitContracts((contract) => {
     contracts.push(contract)
-  }) 
+  })
   return contracts
 }
 

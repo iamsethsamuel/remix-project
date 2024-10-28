@@ -4,6 +4,7 @@ import { encodeParams as encodeParamsHelper, encodeFunctionId, makeFullTypeDefin
 import { eachOfSeries } from 'async'
 import { linkBytecode as linkBytecodeSolc } from 'solc/linker'
 import { isValidAddress, addHexPrefix } from '@ethereumjs/util'
+import fromExponential from 'from-exponential';
 
 /**
   * build the transaction data
@@ -31,62 +32,69 @@ export function encodeData (funABI, values, contractbyteCode) {
 /**
 * encode function / constructor parameters
 *
-* @param {Object} params    - input paramater of the function to call
+* @param {Object} params    - input parameter of the function to call
 * @param {Object} funAbi    - abi definition of the function to call. null if building data for the ctor.
 * @param {Function} callback    - callback
 */
-export function encodeParams (params, funAbi, callback) {
-  let data: Buffer | string = ''
-  let dataHex = ''
-  let funArgs = []
-  if (Array.isArray(params)) {
-    funArgs = params
-    if (funArgs.length > 0) {
-      try {
-        data = encodeParamsHelper(funAbi, funArgs)
-        dataHex = data.toString()
-      } catch (e) {
-        return callback('Error encoding arguments: ' + e)
-      }
-    }
-    if (data.slice(0, 9) === 'undefined') {
-      dataHex = data.slice(9)
-    }
-    if (data.slice(0, 2) === '0x') {
-      dataHex = data.slice(2)
-    }
-  } else if (params.indexOf('raw:0x') === 0) {
-    // in that case we consider that the input is already encoded and *does not* contain the method signature
-    dataHex = params.replace('raw:0x', '')
-    data = Buffer.from(dataHex, 'hex')
-  } else {
-    try {
-      funArgs = parseFunctionParams(params)
-    } catch (e) {
-      return callback('Error encoding arguments: ' + e)
-    }
-    try {
+export function encodeParams (params, funAbi, callback?) {
+  return new Promise((resolve, reject) => {
+    let data: Buffer | string = ''
+    let dataHex = ''
+    let funArgs = []
+    if (Array.isArray(params)) {
+      funArgs = params
       if (funArgs.length > 0) {
-        data = encodeParamsHelper(funAbi, funArgs)
-        dataHex = data.toString()
+        try {
+          data = encodeParamsHelper(funAbi, funArgs)
+          dataHex = data.toString()
+        } catch (e) {
+          reject('Error encoding arguments: ' + e)
+          return callback && callback('Error encoding arguments: ' + e)
+        }
       }
-    } catch (e) {
-      return callback('Error encoding arguments: ' + e)
+      if (data.slice(0, 9) === 'undefined') {
+        dataHex = data.slice(9)
+      }
+      if (data.slice(0, 2) === '0x') {
+        dataHex = data.slice(2)
+      }
+    } else if (params.indexOf('raw:0x') === 0) {
+      // in that case we consider that the input is already encoded and *does not* contain the method signature
+      dataHex = params.replace('raw:0x', '')
+      data = Buffer.from(dataHex, 'hex')
+    } else {
+      try {
+        funArgs = parseFunctionParams(params)
+      } catch (e) {
+        reject('Error encoding arguments: ' + e)
+        return callback && callback('Error encoding arguments: ' + e)
+      }
+      try {
+        if (funArgs.length > 0) {
+          data = encodeParamsHelper(funAbi, funArgs)
+          dataHex = data.toString()
+        }
+      } catch (e) {
+        reject('Error encoding arguments: ' + e)
+        return callback && callback('Error encoding arguments: ' + e)
+      }
+      if (data.slice(0, 9) === 'undefined') {
+        dataHex = data.slice(9)
+      }
+      if (data.slice(0, 2) === '0x') {
+        dataHex = data.slice(2)
+      }
     }
-    if (data.slice(0, 9) === 'undefined') {
-      dataHex = data.slice(9)
-    }
-    if (data.slice(0, 2) === '0x') {
-      dataHex = data.slice(2)
-    }
-  }
-  callback(null, { data: data, dataHex: dataHex, funArgs: funArgs })
+    const result = { data: data, dataHex: dataHex, funArgs: funArgs }
+    callback && callback(null, result)
+    resolve(result)
+  })
 }
 
 /**
 * encode function call (function id + encoded parameters)
 *
-* @param {Object} params    - input paramater of the function to call
+* @param {Object} params    - input parameter of the function to call
 * @param {Object} funAbi    - abi definition of the function to call. null if building data for the ctor.
 * @param {Function} callback    - callback
 */
@@ -100,8 +108,8 @@ export function encodeFunctionCall (params, funAbi, callback) {
 /**
 * encode constructor creation and link with provided libraries if needed
 *
-* @param {Object} contract    - input paramater of the function to call
-* @param {Object} params    - input paramater of the function to call
+* @param {Object} contract    - input parameter of the function to call
+* @param {Object} params    - input parameter of the function to call
 * @param {Object} funAbi    - abi definition of the function to call. null if building data for the ctor.
 * @param {Object} linkLibraries    - contains {linkReferences} object which list all the addresses to be linked
 * @param {Object} linkReferences    - given by the compiler, contains the proper linkReferences
@@ -119,37 +127,37 @@ export function encodeConstructorCallAndLinkLibraries (contract, params, funAbi,
 /**
 * link with provided libraries if needed
 *
-* @param {Object} contract    - input paramater of the function to call
+* @param {Object} contract    - input parameter of the function to call
 * @param {Object} linkLibraries    - contains {linkReferences} object which list all the addresses to be linked
 * @param {Object} linkReferences    - given by the compiler, contains the proper linkReferences
 * @param {Function} callback    - callback
 */
 export function linkLibraries (contract, linkLibraries, linkReferences, callback) {
   let bytecodeToDeploy = contract.evm.bytecode.object
-    if (bytecodeToDeploy.indexOf('_') >= 0) {
-      if (linkLibraries && linkReferences) {
-        for (const libFile in linkLibraries) {
-          for (const lib in linkLibraries[libFile]) {
-            const address = linkLibraries[libFile][lib]
-            if (!isValidAddress(address)) return callback(address + ' is not a valid address. Please check the provided address is valid.')
-            bytecodeToDeploy = linkLibraryStandardFromlinkReferences(lib, address.replace('0x', ''), bytecodeToDeploy, linkReferences)
-          }
+  if (bytecodeToDeploy.indexOf('_') >= 0) {
+    if (linkLibraries && linkReferences) {
+      for (const libFile in linkLibraries) {
+        for (const lib in linkLibraries[libFile]) {
+          const address = linkLibraries[libFile][lib]
+          if (!isValidAddress(address)) return callback(address + ' is not a valid address. Please check the provided address is valid.')
+          bytecodeToDeploy = linkLibraryStandardFromlinkReferences(lib, address.replace('0x', ''), bytecodeToDeploy, linkReferences)
         }
       }
     }
-    if (bytecodeToDeploy.indexOf('_') >= 0) {
-      return callback('Failed to link some libraries')
-    }
-    return callback(null, bytecodeToDeploy)
+  }
+  if (bytecodeToDeploy.indexOf('_') >= 0) {
+    return callback('Failed to link some libraries')
+  }
+  return callback(null, bytecodeToDeploy)
 }
 
 /**
-* encode constructor creation and deploy librairies if needed
+* encode constructor creation and deploy libraries if needed
 *
 * @param {String} contractName    - current contract name
-* @param {Object} contract    - input paramater of the function to call
+* @param {Object} contract    - input parameter of the function to call
 * @param {Object} contracts    - map of all compiled contracts.
-* @param {Object} params    - input paramater of the function to call
+* @param {Object} params    - input parameter of the function to call
 * @param {Object} funAbi    - abi definition of the function to call. null if building data for the ctor.
 * @param {Function} callback    - callback
 * @param {Function} callbackStep  - callbackStep
@@ -187,7 +195,7 @@ export function encodeConstructorCallAndDeployLibraries (contractName, contract,
 * @param {Object} contracts    - map of all compiled contracts.
 * @param {Bool} isConstructor    - isConstructor.
 * @param {Object} funAbi    - abi definition of the function to call. null if building data for the ctor.
-* @param {Object} params    - input paramater of the function to call
+* @param {Object} params    - input parameter of the function to call
 * @param {Function} callback    - callback
 * @param {Function} callbackStep  - callbackStep
 * @param {Function} callbackDeployLibrary  - callbackDeployLibrary
@@ -391,7 +399,7 @@ export function decodeResponse (response, fnabi) {
         const type = fnabi.outputs[i].type
         outputTypes.push(type.indexOf('tuple') === 0 ? makeFullTypeDefinition(fnabi.outputs[i]) : type)
       }
-      if (!response || !response.length) response = new Uint8Array(32 * fnabi.outputs.length) // ensuring the data is at least filled by 0 cause `AbiCoder` throws if there's not engouh data
+      if (!response || !response.length) response = new Uint8Array(32 * fnabi.outputs.length) // ensuring the data is at least filled by 0 cause `AbiCoder` throws if there's not enough data
       // decode data
       const abiCoder = new ethers.utils.AbiCoder()
       const decodedObj = abiCoder.decode(outputTypes, response)
@@ -422,7 +430,7 @@ export function parseFunctionParams (params) {
       // look for closing quote. On success, push the complete string in arguments list
       for (let j = i + 1; !endQuoteIndex; j++) {
         if (params.charAt(j) === '"') {
-          args.push(params.substring(i + 1, j))
+          args.push(normalizeParam(params.substring(i + 1, j)))
           endQuoteIndex = true
           i = j
         }
@@ -451,16 +459,10 @@ export function parseFunctionParams (params) {
       args.push(parseFunctionParams(params.substring(i + 1, j)))
       i = j - 1
     } else if (params.charAt(i) === ',' || i === params.length - 1) { // , or end of string
-       // if startIndex >= 0, it means a parameter was being parsed, it can be first or other parameter
+      // if startIndex >= 0, it means a parameter was being parsed, it can be first or other parameter
       if (startIndex >= 0) {
         let param = params.substring(startIndex, i === params.length - 1 ? undefined : i)
-        const trimmed = param.trim()
-        if (param.startsWith('0x')) param = `${param}`
-        if (/[0-9]/g.test(trimmed)) param = `${trimmed}`
-        if (typeof param === 'string') {          
-          if (trimmed === 'true') param = true
-          if (trimmed === 'false') param = false        
-        }
+        param = normalizeParam(param)
         args.push(param)
       }
       // Register start index of a parameter to parse
@@ -469,6 +471,37 @@ export function parseFunctionParams (params) {
   }
   return args
 }
+
+export const normalizeParam = (param) => {
+  param = param.trim()
+  if (param.startsWith('0x')) param = `${param}`
+  if (/[0-9]/g.test(param)) param = `${param}`
+
+  // fromExponential
+  if (!param.startsWith('0x')) {
+    const regSci = REGEX_SCIENTIFIC.exec(param)
+    const exponents = regSci ? regSci[2] : null
+    if (regSci && REGEX_DECIMAL.exec(exponents)) {
+      try {
+        let paramTrimmed = param.replace(/^'/g, '').replace(/'$/g, '')
+        paramTrimmed = paramTrimmed.replace(/^"/g, '').replace(/"$/g, '')
+        param = fromExponential(paramTrimmed)
+      } catch (e) {
+        console.log(e)
+      }
+    }
+  }
+
+  if (typeof param === 'string') {
+    if (param === 'true') param = true
+    if (param === 'false') param = false
+  }
+  return param
+}
+
+export const REGEX_SCIENTIFIC = /^-?(\d+\.?\d*)e\d*(\d+)$/
+
+export const REGEX_DECIMAL = /^\d*/
 
 export function isArrayOrStringStart (str, index) {
   return str.charAt(index) === '"' || str.charAt(index) === '['

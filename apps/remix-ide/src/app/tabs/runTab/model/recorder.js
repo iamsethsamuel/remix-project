@@ -1,6 +1,6 @@
 var async = require('async')
 var remixLib = require('@remix-project/remix-lib')
-import { bufferToHex } from '@ethereumjs/util'
+import { bytesToHex } from '@ethereumjs/util'
 import { hash } from '@remix-project/remix-lib'
 import { Plugin } from '@remixproject/engine'
 import * as packageJson from '../../../../.././../../package.json'
@@ -21,7 +21,7 @@ const profile = {
 /**
   * Record transaction as long as the user create them.
   */
-class Recorder extends Plugin {
+export class Recorder extends Plugin {
   constructor (blockchain) {
     super(profile)
     this.event = new EventManager()
@@ -43,7 +43,7 @@ class Recorder extends Plugin {
         }
         if (!to) {
           var abi = payLoad.contractABI
-          var keccak = bufferToHex(hash.keccakFromString(JSON.stringify(abi)))
+          var keccak = bytesToHex(hash.keccakFromString(JSON.stringify(abi)))
           record.abi = keccak
           record.contractName = payLoad.contractName
           record.bytecode = payLoad.contractBytecode
@@ -84,7 +84,7 @@ class Recorder extends Plugin {
       const rawAddress = txResult.receipt.contractAddress
       if (!rawAddress) return // not a contract creation
       const address = addressToString(rawAddress)
-      // save back created addresses for the convertion from tokens to real adresses
+      // save back created addresses for the conversion from tokens to real addresses
       this.data._createdContracts[address] = timestamp
       this.data._createdContractsReverse[timestamp] = address
     })
@@ -98,7 +98,7 @@ class Recorder extends Plugin {
   }
 
   /**
-    * stop/start saving txs. If not listenning, is basically in replay mode
+    * stop/start saving txs. If not listening, is basically in replay mode
     *
     * @param {Bool} listen
     */
@@ -208,7 +208,7 @@ class Recorder extends Plugin {
         // resolve the bytecode and ABI using the contract name, this ensure getting the last compiled one.
         const data = await this.call('compilerArtefacts', 'getArtefactsByContractName', tx.record.contractName)
         tx.record.bytecode = data.artefact.evm.bytecode.object
-        const updatedABIKeccak = bufferToHex(hash.keccakFromString(JSON.stringify(data.artefact.abi)))
+        const updatedABIKeccak = bytesToHex(hash.keccakFromString(JSON.stringify(data.artefact.abi)))
         abis[updatedABIKeccak] = data.artefact.abi
         tx.record.abi = updatedABIKeccak
       }
@@ -279,7 +279,7 @@ class Recorder extends Plugin {
           }
           if (rawAddress) {
             const address = addressToString(rawAddress)
-            // save back created addresses for the convertion from tokens to real adresses
+            // save back created addresses for the conversion from tokens to real addresses
             this.data._createdContracts[address] = tx.timestamp
             this.data._createdContractsReverse[tx.timestamp] = address
             newContractFn(abi, address, record.contractName)
@@ -328,5 +328,3 @@ class Recorder extends Plugin {
     })
   }
 }
-
-module.exports = Recorder

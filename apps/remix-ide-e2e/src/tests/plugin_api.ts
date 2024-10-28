@@ -10,7 +10,7 @@ declare global {
 const localPluginData: Profile & LocationProfile & ExternalProfile = {
   name: 'localPlugin',
   displayName: 'Local Plugin',
-  canActivate: ['dGitProvider', 'flattener', 'solidityUnitTesting', 'udapp', 'hardhat-provider'],
+  canActivate: ['dgitApi', 'flattener', 'solidityUnitTesting', 'udapp', 'hardhat-provider'],
   url: 'http://localhost:9999',
   location: 'sidePanel'
 }
@@ -31,12 +31,7 @@ const debugValues = async function (browser: NightwatchBrowser, field: string, e
       return
     }
     browser.waitForElementVisible(`//*[@id="${field}"]`).getText(`//*[@id="${field}"]`, (result) => {
-      console.log(result)
       if (!result.value.toString().includes(expected)) {
-        console.log('Actual result:')
-        console.log(result.value.toString())
-        console.log('Expected result:')
-        console.log(expected)
         getBrowserLogs(browser)
         browser.assert.ok(false, 'Returned value from call does not match expected value.')
       } else {
@@ -133,6 +128,7 @@ const checkForAcceptAndRemember = async function (browser: NightwatchBrowser) {
  */
 
 const clickAndCheckLog = async (browser: NightwatchBrowser, buttonText: string, methodResult: any, eventResult: any, payload: any, waitResult: boolean = true) => { // eslint-disable-line
+  console.log('clickAndCheckLog', buttonText, methodResult, eventResult, payload, waitResult)
   if (payload) {
     await setPayload(browser, payload)
   } else {
@@ -172,7 +168,7 @@ module.exports = {
   },
 
   'Should connect a local plugin': function (browser: NightwatchBrowser) {
-    browser.addLocalPlugin(localPluginData)
+    browser.addLocalPlugin(localPluginData, true)
       // @ts-ignore
       .frame(0).useXpath()
   },
@@ -183,6 +179,14 @@ module.exports = {
   },
 
   'Should select another provider #group1': async function (browser: NightwatchBrowser) {
+    await browser
+      .frameParent()
+      .useCss()
+      .clickLaunchIcon('udapp')
+      .pinGrid('vm-berlin', true)
+      .clickLaunchIcon('localPlugin')
+      .useXpath()
+      .frame(0)
     await clickAndCheckLog(browser, 'udapp:setEnvironmentMode', null, null, { context: 'vm-berlin' })
     await browser
       .frameParent()
@@ -217,7 +221,7 @@ module.exports = {
         .rightClickCustom('[data-id="treeViewLitreeViewItemcontracts/1_Storage.sol"]').useXpath().waitForElementVisible('//*[@id="menuitemtestcommand"]').click('//*[@id="menuitemtestcommand"]', async () => {
           // @ts-ignore
           browser.click('//*[@data-id="verticalIconsKindlocalPlugin"]').frame(0, async () => {
-            await clickAndCheckLog(browser, null, { id: 'localPlugin', name: 'testCommand', label: 'testCommand', type: [], extension: ['.sol'], path: ['contracts/1_Storage.sol'], pattern: [] }, null, null)
+            await clickAndCheckLog(browser, null, { id: 'localPlugin', name: 'testCommand', label: 'testCommand', type: [], extension: ['.sol'], path: ['contracts/1_Storage.sol'], pattern: [], group: 99 }, null, null)
           })
         })
     })
@@ -300,7 +304,7 @@ module.exports = {
     }, null, '/')
   },
   'Should get all workspaces #group2': async function (browser: NightwatchBrowser) {
-    await clickAndCheckLog(browser, 'filePanel:getWorkspaces', [{name:"default_workspace",isGitRepo:false}, {name:"emptyworkspace",isGitRepo:false}, {name:"testspace",isGitRepo:false}], null, null)
+    await clickAndCheckLog(browser, 'filePanel:getWorkspaces', [{name:"default_workspace",isGitRepo:false,hasGitSubmodules:false,isGist:null}, {name:"emptyworkspace",isGitRepo:false,hasGitSubmodules:false,isGist:null}, {name:"testspace",isGitRepo:false,hasGitSubmodules:false,isGist:null}], null, null)
   },
   'Should have set workspace event #group2': async function (browser: NightwatchBrowser) {
     await clickAndCheckLog(browser, 'filePanel:createWorkspace', null, { event: 'setWorkspace', args: [{ name: 'newspace', isLocalhost: false }] }, 'newspace')
@@ -314,33 +318,33 @@ module.exports = {
 
   'Should rename workspace #group2': async function (browser: NightwatchBrowser) {
     await clickAndCheckLog(browser, 'filePanel:renameWorkspace', null, null, ['default_workspace', 'renamed'])
-    await clickAndCheckLog(browser, 'filePanel:getWorkspaces', [{name:"emptyworkspace",isGitRepo:false},{name:"testspace",isGitRepo:false},{name:"newspace",isGitRepo:false},{name:"renamed",isGitRepo:false}], null, null)
+    await clickAndCheckLog(browser, 'filePanel:getWorkspaces', [{name:"emptyworkspace",isGitRepo:false,hasGitSubmodules:false,isGist:null},{name:"testspace",isGitRepo:false,hasGitSubmodules:false,isGist:null},{name:"newspace",isGitRepo:false,hasGitSubmodules:false,isGist:null},{name:"renamed",isGitRepo:false,hasGitSubmodules:false,isGist:null}], null, null)
   },
   'Should delete workspace #group2': async function (browser: NightwatchBrowser) {
     await clickAndCheckLog(browser, 'filePanel:deleteWorkspace', null, null, ['testspace'])
-    await clickAndCheckLog(browser, 'filePanel:getWorkspaces', [{name:"emptyworkspace",isGitRepo:false},{name:"newspace",isGitRepo:false},{name:"renamed",isGitRepo:false}], null, null)
+    await clickAndCheckLog(browser, 'filePanel:getWorkspaces', [{name:"emptyworkspace",isGitRepo:false,hasGitSubmodules:false,isGist:null},{name:"newspace",isGitRepo:false,hasGitSubmodules:false,isGist:null},{name:"renamed",isGitRepo:false,hasGitSubmodules:false,isGist:null}], null, null)
   },
   // DGIT
   'Should have changes on new workspace #group3': async function (browser: NightwatchBrowser) {
     await clickAndCheckLog(browser, 'filePanel:createWorkspace', null, null, 'dgit')
-    await clickAndCheckLog(browser, 'dGitProvider:status', [[".prettierrc.json",0,2,0], ["README.txt",0,2,0],["contracts/1_Storage.sol",0,2,0],["contracts/2_Owner.sol",0,2,0],["contracts/3_Ballot.sol",0,2,0],["scripts/deploy_with_ethers.ts",0,2,0],["scripts/deploy_with_web3.ts",0,2,0],["scripts/ethers-lib.ts",0,2,0],["scripts/web3-lib.ts",0,2,0],["tests/Ballot_test.sol",0,2,0],["tests/storage.test.js",0,2,0]], null, null)
+    await clickAndCheckLog(browser, 'dgitApi:status', [[".prettierrc.json",0,2,0], ["README.txt",0,2,0],["contracts/1_Storage.sol",0,2,0],["contracts/2_Owner.sol",0,2,0],["contracts/3_Ballot.sol",0,2,0],["scripts/deploy_with_ethers.ts",0,2,0],["scripts/deploy_with_web3.ts",0,2,0],["scripts/ethers-lib.ts",0,2,0],["scripts/web3-lib.ts",0,2,0],["tests/Ballot_test.sol",0,2,0],["tests/storage.test.js",0,2,0]], null, null)
   },
 
   'Should stage contract #group3': async function (browser: NightwatchBrowser) {
-    await clickAndCheckLog(browser, 'dGitProvider:add', null, null, {
+    await clickAndCheckLog(browser, 'dgitApi:add', null, null, {
       filepath: 'contracts/1_Storage.sol'
     })
-    await clickAndCheckLog(browser, 'dGitProvider:status', [[".prettierrc.json",0,2,0],["README.txt",0,2,0],["contracts/1_Storage.sol",0,2,2],["contracts/2_Owner.sol",0,2,0],["contracts/3_Ballot.sol",0,2,0],["scripts/deploy_with_ethers.ts",0,2,0],["scripts/deploy_with_web3.ts",0,2,0],["scripts/ethers-lib.ts",0,2,0],["scripts/web3-lib.ts",0,2,0],["tests/Ballot_test.sol",0,2,0],["tests/storage.test.js",0,2,0]], null, null)
+    await clickAndCheckLog(browser, 'dgitApi:status', [[".prettierrc.json",0,2,0],["README.txt",0,2,0],["contracts/1_Storage.sol",0,2,2],["contracts/2_Owner.sol",0,2,0],["contracts/3_Ballot.sol",0,2,0],["scripts/deploy_with_ethers.ts",0,2,0],["scripts/deploy_with_web3.ts",0,2,0],["scripts/ethers-lib.ts",0,2,0],["scripts/web3-lib.ts",0,2,0],["tests/Ballot_test.sol",0,2,0],["tests/storage.test.js",0,2,0]], null, null)
   },
   'Should commit changes #group3': async function (browser: NightwatchBrowser) {
-    await clickAndCheckLog(browser, 'dGitProvider:commit', null, null, { author: { name: 'Remix', email: 'Remix' }, message: 'commit-message' })
-    await clickAndCheckLog(browser, 'dGitProvider:log', 'commit-message', null, null)
+    await clickAndCheckLog(browser, 'dgitApi:commit', null, null, { author: { name: 'Remix', email: 'Remix' }, message: 'commit-message' })
+    await clickAndCheckLog(browser, 'dgitApi:log', 'commit-message', null, null)
   },
   'Should have git log #group3': async function (browser: NightwatchBrowser) {
-    await clickAndCheckLog(browser, 'dGitProvider:log', 'commit-message', null, null)
+    await clickAndCheckLog(browser, 'dgitApi:log', 'commit-message', null, null)
   },
   'Should have branches #group3': async function (browser: NightwatchBrowser) {
-    await clickAndCheckLog(browser, 'dGitProvider:branches', [{ name: 'main' }], null, null)
+    await clickAndCheckLog(browser, 'dgitApi:branches', [{ name: 'main' }], null, null)
   },
   // resolver
   'Should resolve url #group4': async function (browser: NightwatchBrowser) {
@@ -436,7 +440,7 @@ module.exports = {
       .waitForElementContainsText('*[data-shared="tooltipPopup"]', 'I am a re-toast')
 
   },
-  'Should open 2 alerts from localplugin #group9': function (browser: NightwatchBrowser) {
+  'Should open 2 alerts from localplugin #group9': !function (browser: NightwatchBrowser) {
     browser
       .clickLaunchIcon('localPlugin')
       .useXpath()

@@ -43,7 +43,7 @@ module.exports = {
       .clickFunction('delegate - transact (not payable)', { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
       .testFunction('last',
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded input': { 'address to': '0x4B0897b0513fdC7C541B6d9D7E929C4e5364D2dB' }
         })
   },
@@ -71,7 +71,7 @@ module.exports = {
         abortOnFailure: false,
         suppressNotFoundErrors: true,
       })
-      // we are not changing the visibility for not checksumed contracts
+      // we are not changing the visibility for not checksummed contracts
       // .addAtAddressInstance('0x692a70D2e424a56D2C6C27aA97D1a86395877b3B', true, false)
       .clickLaunchIcon('filePanel')
       .addAtAddressInstance('0x692a70D2e424a56D2C6C27aA97D1a86395877b3A', true, true)
@@ -83,7 +83,7 @@ module.exports = {
       .clickFunction('delegate - transact (not payable)', { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
       .testFunction('last',
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded input': { 'address to': '0x4B0897b0513fdC7C541B6d9D7E929C4e5364D2dB' }
         })
   },
@@ -94,7 +94,6 @@ module.exports = {
       .connectToExternalHttpProvider('http://localhost:8545', 'Custom')
       .clickLaunchIcon('solidity')
       .clickLaunchIcon('udapp')
-      .pause(2000)
       .clearValue('input[placeholder="uint8 _numProposals"]')
       .setValue('input[placeholder="uint8 _numProposals"]', '2')
       .click('*[data-id="Deploy - transact (not payable)"]')

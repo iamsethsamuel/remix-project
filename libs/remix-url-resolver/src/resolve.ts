@@ -64,7 +64,7 @@ export class RemixURLResolver {
     // eslint-disable-next-line no-useless-catch
     try {
       const req = `https://raw.githubusercontent.com/${root}/${reference}/${filePath}`
-      const response: AxiosResponse = await axios.get(req, { transformResponse: [] })
+      const response: AxiosResponse = await axios.get(req, { transformResponse: []})
       return { content: response.data, cleanUrl: root + '/' + filePath }
     } catch (e) {
       throw e
@@ -79,7 +79,7 @@ export class RemixURLResolver {
   async handleHttp(url: string, cleanUrl: string): Promise<HandlerResponse> {
     // eslint-disable-next-line no-useless-catch
     try {
-      const response: AxiosResponse = await axios.get(url, { transformResponse: [] })
+      const response: AxiosResponse = await axios.get(url, { transformResponse: []})
       return { content: response.data, cleanUrl }
     } catch (e) {
       throw e
@@ -94,7 +94,7 @@ export class RemixURLResolver {
   async handleHttps(url: string, cleanUrl: string): Promise<HandlerResponse> {
     // eslint-disable-next-line no-useless-catch
     try {
-      const response: AxiosResponse = await axios.get(url, { transformResponse: [] })
+      const response: AxiosResponse = await axios.get(url, { transformResponse: []})
       return { content: response.data, cleanUrl }
     } catch (e) {
       throw e
@@ -106,7 +106,7 @@ export class RemixURLResolver {
     try {
       const bzz = new Bzz({ url: this.protocol + '//swarm-gateways.net' })
       const url = bzz.getDownloadURL(cleanUrl, { mode: 'raw' })
-      const response: AxiosResponse = await axios.get(url, { transformResponse: [] })
+      const response: AxiosResponse = await axios.get(url, { transformResponse: []})
       return { content: response.data, cleanUrl }
     } catch (e) {
       throw e
@@ -125,7 +125,7 @@ export class RemixURLResolver {
       const req = 'https://jqgt.remixproject.org/' + url
       // If you don't find greeter.sol on ipfs gateway use local
       // const req = 'http://localhost:8080/' + url
-      const response: AxiosResponse = await axios.get(req, { transformResponse: [] })
+      const response: AxiosResponse = await axios.get(req, { transformResponse: []})
       return { content: response.data, cleanUrl: url.replace('ipfs/', '') }
     } catch (e) {
       throw e
@@ -138,70 +138,70 @@ export class RemixURLResolver {
   */
 
   async handleNpmImport(url: string): Promise<HandlerResponse> {
-      if (!url) throw new Error('url is empty')
-      const isVersionned = semverRegex().exec(url.replace(/@/g, '@ ').replace(/\//g, ' /'))
-      if (this.getDependencies && !isVersionned) {
-        try {
-          const { deps, yarnLock, packageLock } = await this.getDependencies()
-          let matchLength = 0
-          let pkg
-          if (deps) {
-            Object.keys(deps).map((dep) => {
-              const reg = new RegExp(dep + '/', 'g')
-              const match = url.match(reg)
-              if (match && match.length > 0 && matchLength < match[0].length) {
-                matchLength = match[0].length
-                pkg = dep
-              }
-            })
-            if (pkg) {
-              let version
-              if (yarnLock) {
-                // yarn.lock
-                const regex = new RegExp(`"${pkg}@(.*)"`, 'g')
-                const yarnVersion = regex.exec(yarnLock)
-                if (yarnVersion && yarnVersion.length > 1) {
-                  version = yarnVersion[1]
-                }
-              }
-              if (!version && packageLock && packageLock['dependencies'] && packageLock['dependencies'][pkg] && packageLock['dependencies'][pkg]['version']) {
-                // package-lock.json
-                version = packageLock['dependencies'][pkg]['version']
-              }
-              if (!version) {
-                // package.json
-                version = deps[pkg]
-              }
-              if (version) {
-                const versionSemver = semver.minVersion(version)
-                url = url.replace(pkg, `${pkg}@${versionSemver.version}`)
+    if (!url) throw new Error('url is empty')
+    let fetchUrl = url
+    const isVersionned = semverRegex().exec(url.replace(/@/g, '@ ').replace(/\//g, ' /'))
+    if (this.getDependencies && !isVersionned) {
+      try {
+        const { deps, yarnLock, packageLock } = await this.getDependencies()
+        let matchLength = 0
+        let pkg
+        if (deps) {
+          Object.keys(deps).map((dep) => {
+            const reg = new RegExp(dep + '/', 'g')
+            const match = url.match(reg)
+            if (match && match.length > 0 && matchLength < match[0].length) {
+              matchLength = match[0].length
+              pkg = dep
+            }
+          })
+          if (pkg) {
+            let version
+            if (yarnLock) {
+              // yarn.lock
+              const regex = new RegExp(`"${pkg}@(.*)"`, 'g')
+              const yarnVersion = regex.exec(yarnLock)
+              if (yarnVersion && yarnVersion.length > 1) {
+                version = yarnVersion[1]
               }
             }
+            if (!version && packageLock && packageLock['dependencies'] && packageLock['dependencies'][pkg] && packageLock['dependencies'][pkg]['version']) {
+              // package-lock.json
+              version = packageLock['dependencies'][pkg]['version']
+            }
+            if (!version) {
+              // package.json
+              version = deps[pkg]
+            }
+            if (version) {
+              const versionSemver = semver.minVersion(version)
+              fetchUrl = url.replace(pkg, `${pkg}@${versionSemver.version}`)
+            }
           }
-        } catch (e) {
-          console.log(e)
         }
+      } catch (e) {
+        console.log(e)
+      }
+    }
+
+    const npm_urls = ["https://cdn.jsdelivr.net/npm/", "https://unpkg.com/"]
+    process && process.env && process.env['NX_NPM_URL'] && npm_urls.unshift(process.env['NX_NPM_URL'])
+    let content = null
+    // get response from all urls
+    for (let i = 0; i < npm_urls.length; i++) {
+      try {
+        const req = npm_urls[i] + fetchUrl
+        const response: AxiosResponse = await axios.get(req, { transformResponse: []})
+        content = response.data
+        break
+      } catch (e) {
+        // try next url
       }
 
-      const npm_urls = ["https://cdn.jsdelivr.net/npm/", "https://unpkg.com/"]
-      process && process.env && process.env['NPM_URL'] && npm_urls.unshift(process.env['NPM_URL'])
-      let content = null
-      // get response from all urls
-      for (let i = 0; i < npm_urls.length; i++) {
-        try {
-          const req = npm_urls[i] + url
-          const response: AxiosResponse = await axios.get(req, { transformResponse: [] })
-          content = response.data
-          break
-        } catch (e) {
-          // try next url
-        }
-
-      }
-      if (!content) throw new Error('Unable to load ' + url)
-      return { content, cleanUrl: url }
+    }
+    if (!content) throw new Error('Unable to load ' + url)
+    return { content, cleanUrl: url }
   }
-  
 
   getHandlers (): Handler[] {
     return [
@@ -261,5 +261,5 @@ export class RemixURLResolver {
 
 // see npm semver-regex
 function semverRegex() {
-	return /(?<=^v?|\sv?)(?:(?:0|[1-9]\d{0,9}?)\.){2}(?:0|[1-9]\d{0,9})(?:-(?:--+)?(?:0|[1-9]\d*|\d*[a-z]+\d*)){0,100}(?=$| |\+|\.)(?:(?<=-\S+)(?:\.(?:--?|[\da-z-]*[a-z-]\d*|0|[1-9]\d*)){1,100}?)?(?!\.)(?:\+(?:[\da-z]\.?-?){1,100}?(?!\w))?(?!\+)/gi;
+  return /(?<=^v?|\sv?)(?:(?:0|[1-9]\d{0,9}?)\.){2}(?:0|[1-9]\d{0,9})(?:-(?:--+)?(?:0|[1-9]\d*|\d*[a-z]+\d*)){0,100}(?=$| |\+|\.)(?:(?<=-\S+)(?:\.(?:--?|[\da-z-]*[a-z-]\d*|0|[1-9]\d*)){1,100}?)?(?!\.)(?:\+(?:[\da-z]\.?-?){1,100}?(?!\w))?(?!\+)/gi;
 }

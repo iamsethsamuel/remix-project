@@ -1,12 +1,24 @@
-import { HighlightPosition, CompilationResult, RemixApi } from '@remixproject/plugin-api';
-import { Api, Status } from '@remixproject/plugin-utils';
+import { HighlightPosition, CompilationResult, RemixApi, customAction } from '@remixproject/plugin-api'
+import { Api, Status } from '@remixproject/plugin-utils'
 import { createClient } from '@remixproject/plugin-webview'
-import { PluginClient } from '@remixproject/plugin';
-import { Contract } from './compiler';
-import { ExampleContract } from '../components/VyperResult';
+import { PluginClient } from '@remixproject/plugin'
+import { Contract, compileContract } from './compiler'
+import { ExampleContract } from '../components/VyperResult'
+import EventEmitter from 'events'
+import { CustomRemixApi } from '@remix-api'
 
-export class RemixClient extends PluginClient {
-  private client = createClient<Api, Readonly<RemixApi>>(this);
+
+export type VyperComplierAddress = 'https://vyper2.remixproject.org/' | 'http://localhost:8000/'
+export class RemixClient extends PluginClient<any, CustomRemixApi> {
+  private client = createClient<Api, Readonly<RemixApi>>(this)
+  compilerUrl: VyperComplierAddress = 'https://vyper2.remixproject.org/'
+  compilerOutput: any
+  eventEmitter = new EventEmitter()
+
+  constructor() {
+    super()
+    this.compilerOutput = {}
+  }
 
   loaded() {
     return this.client.onload()
@@ -26,8 +38,20 @@ export class RemixClient extends PluginClient {
     })
   }
 
+  resetCompilerState() {
+    this.compilerOutput = {}
+    this.eventEmitter.emit('resetCompilerState', {})
+  }
+
+  async vyperCompileCustomAction(action?: customAction) {
+    //read selected contract from file explorer and create contract type
+    const contract = await this.getContract()
+    //compile contract
+    await compileContract(contract.name, this.compilerUrl)
+  }
+
   /** Load Ballot contract example into the file manager */
-  async loadContract({name, address}: ExampleContract) {
+  async loadContract({ name, address }: ExampleContract) {
     try {
       const content = await this.client.call('contentImport', 'resolve', address)
       await this.client.call('fileManager', 'setFile', content.cleanUrl, content.content)
@@ -37,15 +61,50 @@ export class RemixClient extends PluginClient {
     }
   }
 
-  async cloneVyperRepo() {
+  async askGpt(message: string) {
+    if (message.length === 0) {
+      this.client.call('terminal', 'log', { type: 'log', value: 'kindly send a proper message so I can respond please' })
+      return
+    }
+    try {
+      // TODO: remove! no formatting required since already handled on server
+      const file = await this.client.call('fileManager', 'getCurrentFile')
+      const content = await this.client.call('fileManager', 'readFile', file)
+      const messageAI = `Vyper code: ${content}\n error message: ${message}\n explain why the error occurred and how to fix it.`
+      await this.client.call('remixAI' as any, 'chatPipe', 'error_explaining', messageAI)
+    } catch (err) {
+      console.error('unable to askGpt')
+      console.error(err)
+    }
+  }
+
+  async cloneVyperRepo(count?: number) {
+
     try {
       // @ts-ignore
       this.call('notification', 'toast', 'cloning Vyper repository...')
-      await this.call('manager', 'activatePlugin', 'dGitProvider')
-      // @ts-ignore
-      await this.call('dGitProvider', 'clone', { url: 'https://github.com/vyperlang/vyper', token: null }, 'vyper-lang')
-      // @ts-ignore
-      this.call('notification', 'toast', 'Vyper repository cloned, the workspace Vyper has been created.')
+      await this.call(
+        'dgitApi',
+        'clone',
+        { url: 'https://github.com/vyperlang/vyper', token: null, branch: 'master', singleBranch: false, workspaceName: 'vyper' },
+      )
+
+      // await this.call(
+      //   'dgitApi',
+      //   'checkout',
+      //   {
+      //     ref:'v0.0.5',
+      //     force: true,
+      //     refresh: true,
+      //   }
+      // )
+
+      this.call(
+        // @ts-ignore
+        'notification',
+        'toast',
+        'Vyper repository cloned, the workspace Vyper has been created.'
+      )
     } catch (e) {
       // @ts-ignore
       this.call('notification', 'toast', e.message)
@@ -54,7 +113,14 @@ export class RemixClient extends PluginClient {
 
   /** Update the status of the plugin in remix */
   changeStatus(status: Status) {
-    this.client.emit('statusChanged', status);
+    this.client.emit('statusChanged', status)
+  }
+
+  checkActiveTheme() {
+    const active = this.client.call('theme', 'currentTheme')
+    if (active === 'dark') {
+      return 'monokai' as any
+    }
   }
 
   /** Highlight a part of the editor */
@@ -75,7 +141,7 @@ export class RemixClient extends PluginClient {
     await this.client.call('editor', 'addAnnotation', annotation, name)
   }
 
-  /** Remove current Hightlight */
+  /** Remove current Highlight */
   async discardHighlight() {
     await this.client.call('editor', 'discardHighlight')
     await this.client.call('editor', 'clearAnnotations')
@@ -94,15 +160,14 @@ export class RemixClient extends PluginClient {
     const content = await this.client.call('fileManager', 'getFile', name)
     return {
       name,
-      content,
+      content
     }
   }
 
   /** Emit an event to Remix with compilation result */
   compilationFinish(title: string, content: string, data: CompilationResult) {
-    this.client.emit('compilationFinished', title, content, 'vyper', data);
+    this.client.emit('compilationFinished', title, content, 'vyper', data)
   }
 }
 
 export const remixClient = new RemixClient()
-// export const RemixClientContext = React.createContext(new RemixClient())

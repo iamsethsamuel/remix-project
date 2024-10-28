@@ -1,11 +1,10 @@
-import { default as test} from "tape"
+import { default as test } from "tape"
 import * as common from '../../src/solidity-analyzer/modules/staticAnalysisCommon'
 const { localCall, thisLocalCall, libCall, externalDirect, superLocal, assignment, abiNamespaceCallNodes,
-    inlineAssembly, unaryOperation, nowAst, blockTimestamp, stateVariableContractNode,
-    functionDefinition, requireCall, selfdestruct, storageVariableNodes, dynamicDeleteUnaryOp,
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    lowlevelCall, parameterFunction, parameterFunctionCall, inheritance, blockHashAccess, contractDefinition, funcDefForComplexParams } = require('./astBlocks')
-
+  inlineAssembly, unaryOperation, nowAst, blockTimestamp, stateVariableContractNode,
+  functionDefinition, requireCall, selfdestruct, storageVariableNodes, dynamicDeleteUnaryOp,
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  lowlevelCall, parameterFunction, parameterFunctionCall, inheritance, blockHashAccess, contractDefinition, funcDefForComplexParams } = require('./astBlocks')
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const compiledContractObj = require('./compilationDetails/CompiledContractObj.json')
@@ -40,11 +39,11 @@ test('staticAnalysisCommon.helpers.buildFunctionSignature', function (t) {
     'function (bytes memory) payable returns (bool,bytes memory)',
     'check fixed call type')
 
-t.equal(common.lowLevelCallTypes['CALL-0.4'].type,
+  t.equal(common.lowLevelCallTypes['CALL-0.4'].type,
     'function () payable returns (bool)',
     'check fixed call type for versions before 0.5.0')
 
-t.equal(common.lowLevelCallTypes.CALLCODE.type,
+  t.equal(common.lowLevelCallTypes.CALLCODE.type,
     'function () payable returns (bool)',
     'check fixed callcode type')
 
@@ -56,7 +55,7 @@ t.equal(common.lowLevelCallTypes.CALLCODE.type,
     'function (bytes memory) returns (bool,bytes memory)',
     'check fixed delegatecall type')
 
-t.equal(common.lowLevelCallTypes['DELEGATECALL-0.4'].type,
+  t.equal(common.lowLevelCallTypes['DELEGATECALL-0.4'].type,
     'function () returns (bool)',
     'check fixed delegatecall type for version before 0.5.0')
 })
@@ -89,7 +88,7 @@ test('staticAnalysisCommon.helpers.operator', function (t) {
 
 test('staticAnalysisCommon.helpers.nodeType', function (t) {
   t.plan(3)
-  const node = { nodeType: 'Identifier', name: 'now'}
+  const node = { nodeType: 'Identifier', name: 'now' }
   const node2 = { nodeType: 'FunctionCall', memberName: 'call' }
 
   t.ok(common.helpers.nodeType(node, common.nodeTypes.IDENTIFIER), 'should work for identifier')
@@ -140,19 +139,19 @@ test('staticAnalysisCommon.helpers.expressionTypeDescription', function (t) {
 
 test('staticAnalysisCommon.getType', function (t) {
   t.plan(3)
-  const node =  { "argumentTypes": null,
-                  "id": 3,
-                  "name": "a",
-                  "nodeType": "Identifier",
-                  "overloadedDeclarations": [],
-                  "referencedDeclaration": 22,
-                  "src": "52:1:0",
-                  "typeDescriptions":
+  const node = { "argumentTypes": null,
+    "id": 3,
+    "name": "a",
+    "nodeType": "Identifier",
+    "overloadedDeclarations": [],
+    "referencedDeclaration": 22,
+    "src": "52:1:0",
+    "typeDescriptions":
                   {
                     "typeIdentifier": "t_uint256",
                     "typeString": "uint256"
                   }
-                }
+  }
   t.ok(common.getType(blockHashAccess) === 'bytes32', 'gettype should work for different nodes')
   t.ok(common.getType(node) === 'uint256', 'gettype should work for different nodes')
   t.ok(common.getType(assignment) === 'uint256', 'gettype should work for different nodes')
@@ -286,11 +285,11 @@ test('staticAnalysisCommon.getFullQualifiedFunctionCallIdent', function (t) {
   t.throws(() => common.getFullQualifiedFunctionCallIdent(contractDefinition, assignment), new RegExp('staticAnalysisCommon.js: Can not get function name from non function call node'), 'throws on wrong type')
 })
 
-test('staticAnalysisCommon.getFullQuallyfiedFuncDefinitionIdent', function (t) {
+test('staticAnalysisCommon.getFullQualifiedFuncDefinitionIdent', function (t) {
   t.plan(3)
-  t.ok(common.getFullQuallyfiedFuncDefinitionIdent(contractDefinition, functionDefinition, ['uint256', 'bool']) === 'C.f(uint256,bool)', 'creates right signature')
-  t.throws(() => common.getFullQuallyfiedFuncDefinitionIdent(contractDefinition, parameterFunctionCall, ['uint256', 'bool']), new RegExp('staticAnalysisCommon.js: not a FunctionDefinition Node'), 'throws on wrong nodes')
-  t.throws(() => common.getFullQuallyfiedFuncDefinitionIdent(parameterFunctionCall, functionDefinition, ['uint256', 'bool']), new RegExp('staticAnalysisCommon.js: not a ContractDefinition Node'), 'throws on wrong nodes')
+  t.ok(common.getFullQualifiedFuncDefinitionIdent(contractDefinition, functionDefinition, ['uint256', 'bool']) === 'C.f(uint256,bool)', 'creates right signature')
+  t.throws(() => common.getFullQualifiedFuncDefinitionIdent(contractDefinition, parameterFunctionCall, ['uint256', 'bool']), new RegExp('staticAnalysisCommon.js: not a FunctionDefinition Node'), 'throws on wrong nodes')
+  t.throws(() => common.getFullQualifiedFuncDefinitionIdent(parameterFunctionCall, functionDefinition, ['uint256', 'bool']), new RegExp('staticAnalysisCommon.js: not a ContractDefinition Node'), 'throws on wrong nodes')
 })
 
 test('staticAnalysisCommon.getSplittedTypeDesc', function (t) {
@@ -357,9 +356,9 @@ test('staticAnalysisCommon.isStateVariable', function (t) {
 test('staticAnalysisCommon.isConstantFunction', function (t) {
   t.plan(3)
   t.ok(common.isConstantFunction(functionDefinition), 'should be const func definition')
-  functionDefinition.stateMutability =  'view'
+  functionDefinition.stateMutability = 'view'
   t.ok(common.isConstantFunction(functionDefinition), 'should be const func definition')
-  functionDefinition.stateMutability =  'nonpayable'
+  functionDefinition.stateMutability = 'nonpayable'
   t.notOk(common.isConstantFunction(functionDefinition), 'should not be const func definition')
 })
 

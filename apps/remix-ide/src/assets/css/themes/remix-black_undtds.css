@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css?family=Nunito+Sans:400,600&display=swap');
 :root {
+  --ai: #2de7f3;
   --blue: #90c3f6;
   --indigo: #6610f2;
   --purple: #9e77f6;
@@ -72,7 +73,8 @@ body {
   background-color: var(--body-bg);
 }
 *::-webkit-scrollbar {
-  width: 8px;
+  width:  8px;
+  height: 6px;
 }
 *::-webkit-scrollbar-thumb {
   background-color: #37373b;
@@ -239,7 +241,7 @@ textarea {
   font-size: inherit;
   line-height: inherit;
   background-color: #2b2b2b;
-  color: #d5d5d5d5d5d5;
+  color: #d5d5d5;
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 0 2px rgba(79, 86, 89, 0.25);
 }
 button,
@@ -2096,6 +2098,7 @@ textarea.form-control.is-invalid {
   }
 }
 .btn {
+  cursor: pointer;
   display: inline-block;
   font-weight: 400;
   color: #d5d5d5;
@@ -2127,6 +2130,7 @@ textarea.form-control.is-invalid {
 .btn.disabled,
 .btn:disabled {
   opacity: 0.65;
+  cursor: not-allowed
 }
 a.btn.disabled,
 fieldset:disabled a.btn {
@@ -2149,7 +2153,7 @@ fieldset:disabled a.btn {
 .btn-primary.disabled,
 .btn-primary:disabled {
   color: #d5d5d5;
-  background-color: #153844;
+  background-color: #327b96;
   border-color: #007aa6;
 }
 .btn-primary:not(:disabled):not(.disabled).active,
@@ -2894,9 +2898,9 @@ input[type="submit"].btn-block {
 }
 .dropdown-item:focus,
 .dropdown-item:hover {
-  color: #16181b;
+  color: var(--text);
   text-decoration: none;
-  background-color: #f8f9fa;
+  background-color: var(--secondary);
 }
 .dropdown-item.active,
 .dropdown-item:active {
@@ -3371,8 +3375,8 @@ input[type="submit"].btn-block {
   background-image: none;
 }
 .custom-select:disabled {
-  color: #272626;
-  background-color: ##222225;
+  color: #bdbed1;
+  background-color: #222225;
 }
 .custom-select::-ms-expand {
   display: none;
@@ -5076,6 +5080,7 @@ a.close.disabled {
 .modal-header .close {
   padding: 15px;
   margin: -1rem -1rem -1rem auto;
+  cursor: pointer;
 }
 .modal-title {
   margin-bottom: 0;
@@ -5630,7 +5635,7 @@ a.close.disabled {
   vertical-align: text-top !important;
 }
 .bg-primary {
-  background-color: #28282D !important;
+  background-color: var(--primary) !important;
 }
 a.bg-primary:focus,
 a.bg-primary:hover,
@@ -5706,6 +5711,9 @@ button.bg-dark:hover {
 }
 .bg-transparent {
   background-color: transparent !important;
+}
+.border-no-shift {
+  box-shadow: inset 0 0 0 1px #3c3a3a;
 }
 .border {
   border: 1px solid #3c3a3a !important;
@@ -8584,6 +8592,9 @@ a.text-light:hover {
 }
 .text-dark {
   color: #babbcc !important;
+}
+.text-ai {
+  color: #2de7f3 !important;
 }
 a.text-dark:focus,
 a.text-dark:hover {

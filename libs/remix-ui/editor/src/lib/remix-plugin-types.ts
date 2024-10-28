@@ -226,7 +226,7 @@ declare interface CondensedCompilationInput {
     optimize: boolean
     /** e.g: 0.6.8+commit.0bbfe453 */
     version: string
-    evmVersion?: 'paris' | 'berlin' | 'istanbul' | 'petersburg' | 'constantinople' | 'byzantium' | 'spuriousDragon' | 'tangerineWhistle' | 'homestead'
+    evmVersion?: 'cancun' | 'shanghai' | 'paris' | 'berlin' | 'istanbul' | 'petersburg' | 'constantinople' | 'byzantium' | 'spuriousDragon' | 'tangerineWhistle' | 'homestead'
 }
 
 declare interface ContentImport {
@@ -380,7 +380,6 @@ declare interface IDgitSystem {
         status(cmd: any): any[];
         rm(cmd: any): string;
         log(cmd: any): any[];
-        lsfiles(cmd: any): any[];
         readblob(cmd: any): { oid: string, blob: Uint8Array }
         resolveref(cmd: any): string
         branch(cmd: any): void

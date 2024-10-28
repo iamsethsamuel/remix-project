@@ -1,12 +1,12 @@
 'use strict'
 import { Plugin } from '@remixproject/engine'
-import { RemixURLResolver } from '@remix-project/remix-url-resolver'
+import { RemixURLResolver, githubFolderResolver } from '@remix-project/remix-url-resolver'
 
 const profile = {
   name: 'contentImport',
   displayName: 'content import',
   version: '0.0.1',
-  methods: ['resolve', 'resolveAndSave', 'isExternalUrl']
+  methods: ['resolve', 'resolveAndSave', 'isExternalUrl', 'resolveGithubFolder']
 }
 
 export type ResolvedImport = {
@@ -44,7 +44,7 @@ export class CompilerImports extends Plugin {
         return {}
       }
     })
-    
+
   }
 
   onActivation(): void {
@@ -142,7 +142,7 @@ export class CompilerImports extends Plugin {
 
   /**
     * import the content of @arg url.
-    * first look in the browser localstorage (browser explorer) or locahost explorer. if the url start with `browser/*` or  `localhost/*`
+    * first look in the browser localstorage (browser explorer) or localhost explorer. if the url start with `browser/*` or  `localhost/*`
     * then check if the @arg url is located in the localhost, in the node_modules or installed_contracts folder
     * then check if the @arg url match any external url
     *
@@ -155,7 +155,7 @@ export class CompilerImports extends Plugin {
       if (targetPath && this.currentRequest) {
         const canCall = await this.askUserPermission('resolveAndSave', 'This action will update the path ' + targetPath)
         if (!canCall) throw new Error('No permission to update ' + targetPath)
-      }      
+      }
       const provider = await this.call('fileManager', 'getProviderOf', url)
       if (provider) {
         if (provider.type === 'localhost' && !provider.isConnected()) {
@@ -167,8 +167,8 @@ export class CompilerImports extends Plugin {
           Doesn't make sense to try to resolve "localhost/node_modules/localhost/node_modules/<path>" and we'll end in an infinite loop.
         */
         if (!exist && (url === 'remix_tests.sol' || url === 'remix_accounts.sol')) {
-            await this.call('solidityUnitTesting', 'createTestLibs')
-            exist = await provider.exists(url)
+          await this.call('solidityUnitTesting', 'createTestLibs')
+          exist = await provider.exists(url)
         }
         if (!exist && url.startsWith('browser/')) throw new Error(`not found ${url}`)
         if (!exist && url.startsWith('localhost/')) throw new Error(`not found ${url}`)
@@ -185,14 +185,14 @@ export class CompilerImports extends Plugin {
         } else {
           const localhostProvider = await this.call('fileManager', 'getProviderByName', 'localhost')
           if (localhostProvider.isConnected()) {
-            const splitted = /([^/]+)\/(.*)$/g.exec(url)
+            const split = /([^/]+)\/(.*)$/g.exec(url)
 
             const possiblePaths = ['localhost/installed_contracts/' + url]
             // pick remix-tests library contracts from '.deps'
             if (url.startsWith('remix_')) possiblePaths.push('localhost/.deps/remix-tests/' + url)
-            if (splitted) possiblePaths.push('localhost/installed_contracts/' + splitted[1] + '/contracts/' + splitted[2])
+            if (split) possiblePaths.push('localhost/installed_contracts/' + split[1] + '/contracts/' + split[2])
             possiblePaths.push('localhost/node_modules/' + url)
-            if (splitted) possiblePaths.push('localhost/node_modules/' + splitted[1] + '/contracts/' + splitted[2])
+            if (split) possiblePaths.push('localhost/node_modules/' + split[1] + '/contracts/' + split[2])
 
             for (const path of possiblePaths) {
               try {
@@ -211,5 +211,11 @@ export class CompilerImports extends Plugin {
     } catch (e) {
       throw new Error(e)
     }
+  }
+
+  async resolveGithubFolder (url) {
+    const ghFolder = {}
+    await githubFolderResolver(url, ghFolder, 3)
+    return ghFolder
   }
 }

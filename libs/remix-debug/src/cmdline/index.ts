@@ -1,4 +1,4 @@
-import Web3 from 'web3'
+import { Web3 } from 'web3'
 import { Debugger } from '../debugger/debugger'
 import { EventEmitter } from 'events'
 
@@ -96,7 +96,7 @@ export class CmdLine {
         this.events.emit('globals', data)
       })
 
-      // TODO: this doesnt work too well, it should request the data instead...
+      // TODO: this doesn't work too well, it should request the data instead...
       this.debugger.vmDebuggerLogic.event.register('solidityLocals', (data) => {
         if (JSON.stringify(data) === '{}') return
         this.solidityLocals = data

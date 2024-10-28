@@ -24,15 +24,31 @@ export const personal = (config, checked, dispatch) => {
   dispatch({ type: 'personal', payload: { isChecked: checked, textClass: checked ? textDark : textSecondary } })
 }
 
+export const copilotActivate = (config, checked, dispatch) => {
+  config.set('settings/copilot/suggest/activate', checked)
+  dispatch({ type: 'copilot/suggest/activate', payload: { isChecked: checked, textClass: checked ? textDark : textSecondary } })
+}
+
+export const copilotMaxNewToken = (config, checked, dispatch) => {
+  config.set('settings/copilot/suggest/max_new_tokens', checked)
+  dispatch({ type: 'copilot/suggest/max_new_tokens', payload: { isChecked: checked, textClass: checked ? textDark : textSecondary } })
+}
+
+export const copilotTemperature = (config, checked, dispatch) => {
+  config.set('settings/copilot/suggest/temperature', checked)
+  dispatch({ type: 'copilot/suggest/temperature', payload: { isChecked: checked, textClass: checked ? textDark : textSecondary } })
+}
+
 export const useMatomoAnalytics = (config, checked, dispatch) => {
   config.set('settings/matomo-analytics', checked)
+  localStorage.setItem('matomo-analytics-consent', Date.now().toString())
   dispatch({ type: 'useMatomoAnalytics', payload: { isChecked: checked, textClass: checked ? textDark : textSecondary } })
   if (checked) {
-    _paq.push(['forgetUserOptOut'])
-    // @TODO remove next line when https://github.com/matomo-org/matomo/commit/9e10a150585522ca30ecdd275007a882a70c6df5 is used
-    document.cookie = 'mtm_consent_removed=; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
+    // user has given consent to process their data
+    _paq.push(['setConsentGiven']);
   } else {
-    _paq.push(['optUserOut'])
+    // revoke tracking consent
+    _paq.push(['forgetConsentGiven']);
   }
 }
 
@@ -74,4 +90,9 @@ export const saveIpfsSettingsToast = (config, dispatch, ipfsURL, ipfsProtocol, i
   config.set('settings/ipfs-project-id', ipfsProjectId)
   config.set('settings/ipfs-project-secret', ipfsProjectSecret)
   dispatch({ type: 'save', payload: { message: 'IPFS settings have been saved' } })
+}
+
+export const saveEnvState = (config, checked, dispatch) => {
+  config.set('settings/save-evm-state', checked)
+  dispatch({ type: 'save-evm-state', payload: { isChecked: checked, textClass: checked ? textDark : textSecondary } })
 }

@@ -17,9 +17,10 @@ export default (sources: Source, opts: CompilerInputOptions): string => {
           '': ['ast'],
           '*': ['abi', 'metadata', 'devdoc', 'userdoc', 'storageLayout', 'evm.legacyAssembly', 'evm.bytecode', 'evm.deployedBytecode', 'evm.methodIdentifiers', 'evm.gasEstimates', 'evm.assembly']
         }
-      }
+      },
+      remappings: opts.remappings || []
     }
-  }  
+  }
   if (opts.evmVersion) {
     if (opts.evmVersion.toLowerCase() == 'default') {
       opts.evmVersion = null

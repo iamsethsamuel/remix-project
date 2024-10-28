@@ -1,18 +1,21 @@
-import React, { useState, useEffect } from 'react'
-
-import { VyperCompilationOutput, remixClient } from './utils'
+import { useState, useEffect, useRef } from 'react'
+import { IntlProvider } from 'react-intl'
+import { Renderer } from '@remix-ui/renderer'
+import { remixClient, extractRelativePath } from './utils'
 import { CompilationResult } from '@remixproject/plugin-api'
 
 // Components
 import CompilerButton from './components/CompilerButton'
-import WarnRemote from './components/WarnRemote'
 import VyperResult from './components/VyperResult'
 import LocalUrlInput from './components/LocalUrl'
-import ToggleButtonGroup from 'react-bootstrap/ToggleButtonGroup'
-import ToggleButton from 'react-bootstrap/ToggleButton'
 import Button from 'react-bootstrap/Button'
+import Accordion from 'react-bootstrap/Accordion'
 
 import './app.css'
+import { CustomTooltip } from '@remix-ui/helper'
+import { Form } from 'react-bootstrap'
+import CustomAccordionToggle from './components/CustomAccordionToggle'
+import { VyperCompilationResultWrapper, VyperCompilationErrorsWrapper, VyperCompilationError } from './utils/types'
 
 interface AppState {
   status: 'idle' | 'inProgress'
@@ -21,34 +24,77 @@ interface AppState {
   localUrl: string
 }
 
-interface OutputMap {
-  [fileName: string]: VyperCompilationOutput
-}
-
-const App: React.FC = () => {
+const App = () => {
+  const [locale, setLocale] = useState<{code: string; messages: any}>({
+    code: 'en',
+    messages: null
+  })
   const [contract, setContract] = useState<string>()
-  const [output, setOutput] = useState<OutputMap>({})
+  const [output, setOutput] = useState<VyperCompilationErrorsWrapper | VyperCompilationResultWrapper>(remixClient.compilerOutput)
   const [state, setState] = useState<AppState>({
     status: 'idle',
-    environment: 'local',
-    localUrl: 'http://localhost:8000/compile'
+    environment: 'remote',
+    localUrl: 'http://localhost:8000/',
   })
+
+  const spinnerIcon = useRef(null)
 
   useEffect(() => {
     async function start() {
       try {
         await remixClient.loaded()
-        remixClient.onFileChange(name => setContract(name))        
+        remixClient.onFileChange((name) => {
+          !name.endsWith('.vy') && remixClient.changeStatus({ key: 'none' })
+          setOutput(null)
+          setContract(name)
+        })
         remixClient.onNoFileSelected(() => setContract(''))
       } catch (err) {
         console.log(err)
       }
+
+      try {
+        remixClient.call('locale' as any, 'currentLocale').then((currentLocale) => {
+          setLocale(currentLocale)
+        })        
+  
+        remixClient.on('locale' as any, 'localeChanged', (locale: any) => {
+          setLocale(locale)
+        })
+      } catch (err) {
+        console.log(err)
+      }
+
       try {
         const name = await remixClient.getContractName() // throw if no file are selected
         setContract(name)
       } catch (e) {}
     }
     start()
+  }, [])
+
+  useEffect(() => {
+    remixClient.eventEmitter.on('resetCompilerState', () => {
+      resetCompilerResultState()
+    })
+
+    return () => {
+      remixClient.eventEmitter.off('resetCompilerState', () => {
+        resetCompilerResultState()
+      })
+    }
+  }, [])
+
+  useEffect(() => {
+    remixClient.eventEmitter.on('setOutput', (payload) => {
+      setOutput(payload)
+    })
+
+    return () => {
+      remixClient.eventEmitter.off('setOutput', (payload) => {
+        setOutput(payload)
+      })
+    }
   }, [])
 
   /** Update the environment state value */
@@ -61,65 +107,99 @@ const App: React.FC = () => {
   }
 
   function compilerUrl() {
-    return state.environment === 'remote'
-      ? 'https://vyper.remixproject.org/compile'
-      : state.localUrl
+    return state.environment === 'remote' ? 'https://vyper2.remixproject.org/' : state.localUrl
   }
 
+  function resetCompilerResultState() {
+    setOutput(remixClient.compilerOutput)
+  }
+
+  const [cloneCount, setCloneCount] = useState(0)
+
   return (
+    <IntlProvider locale={locale.code} messages={locale.messages}>
     <main id="vyper-plugin">
-      <header>
-        <div className="title">
-          <img src={'assets/logo.svg'} alt="Vyper logo" />
-          <h4>yper Compiler</h4>
-        </div>
-        <a
-          rel="noopener noreferrer"
-          href="https://github.com/ethereum/remix-project/tree/master/apps/vyper"
-          target="_blank"
-        >
-        <i className="fab fa-github"></i>
-        </a>
-      </header>
       <section>
-        <div className="px-4 w-100">
-          <Button data-id="add-repository" className="w-100 text-dark w-100 bg-light btn-outline-primary " onClick={() => remixClient.cloneVyperRepo()}>
-            Clone Vyper examples repository
-          </Button>
+        <div className="px-3 pt-3 mb-3 w-100">
+          <CustomTooltip placement="bottom" tooltipText="Clone a repo of Vyper examples. Switch to the File Explorer to see the examples.">
+            <Button data-id="add-repository" className="w-100 btn btn-secondary" onClick={() => {
+              {cloneCount === 0 ? remixClient.cloneVyperRepo() : remixClient.cloneVyperRepo(cloneCount)}
+              setCloneCount((prev) => {
+                return ++prev
+              })
+            }}>
+              Clone a repo of Vyper examples
+            </Button>
+          </CustomTooltip>
         </div>
-        <ToggleButtonGroup
-          name="remote"
-          onChange={setEnvironment}
-          type="radio"
-          value={state.environment}
-        >
-          <ToggleButton data-id="remote-compiler" variant="secondary" name="remote" value="remote">
-            Remote Compiler v0.2.16
-          </ToggleButton>
-          <ToggleButton data-id="local-compiler" variant="secondary" name="local" value="local">
-            Local Compiler
-          </ToggleButton>
-        </ToggleButtonGroup>
-        <LocalUrlInput
-          url={state.localUrl}
-          setUrl={setLocalUrl}
-          environment={state.environment}
-        />
-        <WarnRemote environment={state.environment} />
-        <div className="px-4" id="compile-btn">
-          <CompilerButton
-            compilerUrl={compilerUrl()}
-            contract={contract}
-            setOutput={(name, update) =>
-              setOutput({ ...output, [name]: update })
-            }
-          />
+
+        <Accordion className="border-0 w-100 mb-3 accordion-background">
+          <div className="border-0">
+            <div className="">
+              <CustomAccordionToggle eventKey="0">
+                <span className="">Advanced Compiler Settings</span>
+              </CustomAccordionToggle>
+            </div>
+            <Accordion.Collapse eventKey="0">
+              <div className="pt-2">
+                <Form>
+                  <div className="d-flex flex-row justify-content-around mb-1 mt-2">
+                    <div className={`custom-control custom-radio ${state.environment === 'remote' ? 'd-flex' : 'd-flex cursor-status'}`}>
+                      <input type="radio" id="remote-compiler" data-id="remote-compiler" name="remote" value={state.environment} checked={state.environment === 'remote'} onChange={() => setEnvironment('remote')} className={`custom-control-input  ${state.environment === 'remote' ? 'd-flex mr-1' : 'd-flex mr-1 cursor-status'}`} />
+                      <label htmlFor="remote-compiler" className="form-check-label custom-control-label">Remote Compiler</label>
+                    </div>
+                    <div className={`custom-control custom-radio ${state.environment === 'local' ? 'mr-2' : `cursor-status`}`}>
+                      <input id="local-compiler" data-id="local-compiler" checked={state.environment === 'local'} type="radio" name="local" value={state.environment} onChange={() => setEnvironment('local')} className={`custom-control-input  ${state.environment === 'local' ? '' : `cursor-status`}`} />
+                      <label htmlFor="local-compiler" className="form-check-label custom-control-label">Local Compiler</label>
+                    </div>
+                  </div>
+                </Form>
+                <LocalUrlInput url={state.localUrl} setUrl={setLocalUrl} environment={state.environment} />
+              </div>
+            </Accordion.Collapse>
+          </div>
+        </Accordion>
+        <span className="px-3 mt-3 mb-3 small text-warning">
+          Specify the{' '}
+          <a className="text-warning" target="_blank" href="https://remix-ide.readthedocs.io/en/latest/vyper.html#specify-vyper-version">
+            compiler version
+          </a>{' '}
+          &{' '}
+          <a className="text-warning" href="https://remix-ide.readthedocs.io/en/latest/vyper.html#evm-version" target="_blank" rel="noopener noreferrer">
+            EVM version
+          </a>{' '}
+          in the .vy file.
+        </span>
+        <div className="px-3 w-100 mb-3 mt-1" id="compile-btn">
+          <CompilerButton compilerUrl={compilerUrl()} contract={contract} setOutput={(name, update) => setOutput({ ...output, [name]: update })} resetCompilerState={resetCompilerResultState} output={output} remixClient={remixClient}/>
         </div>
-        <article id="result" className="px-2">
-          <VyperResult output={contract ? output[contract] : undefined} />
+        <article id="result" className="px-3 p-2 mx-3 border-top mt-2 vyper-errorBlobs">
+          {output && output.status === 'success' && 
+            <>
+              <VyperResult output={output} plugin={remixClient} />
+            </>
+          }
+          {output && output.status === 'failed' &&
+            output.errors && output.errors.map((error: VyperCompilationError, index: number) => {
+              return <Renderer key={index}
+                  message={extractRelativePath(error.message, contract)}
+                  plugin={remixClient}
+                  context='vyper'
+                  opt={{
+                    useSpan: false,
+                    type: 'error',
+                    errorType: error.error_type,
+                    errCol: error.column,
+                    errLine: error.line ? error.line - 1 : null,
+                    errFile: contract
+                  }}
+                />
+            })            
+          }
         </article>
       </section>
     </main>
+    </IntlProvider>
   )
 }
 

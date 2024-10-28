@@ -1,3 +1,4 @@
+/* eslint-disable prefer-rest-params */
 import { NightwatchBrowser } from 'nightwatch'
 
 require('dotenv').config()
@@ -7,13 +8,12 @@ type LoadPlugin = {
   url: string
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export default function (browser: NightwatchBrowser, callback: VoidFunction, url?: string, preloadPlugins = true, loadPlugin?: LoadPlugin, hideToolTips: boolean = true): void {
   browser
     .url(url || 'http://127.0.0.1:8080')
-    //.switchBrowserTab(0)
-    .waitForElementVisible('[id="remixTourSkipbtn"]')
-    .click('[id="remixTourSkipbtn"]')
-
+    .pause(5000)
+    .switchBrowserTab(0)
     .perform((done) => {
       if (!loadPlugin) return done()
       browser
@@ -26,42 +26,48 @@ export default function (browser: NightwatchBrowser, callback: VoidFunction, url
         .perform(done())
     })
     .verifyLoad()
-    .perform(() => {
-      if (hideToolTips) {
-        browser.execute(function () { // hide tooltips
-          function addStyle(styleString) {
-            const style = document.createElement('style');
-            style.textContent = styleString;
-            document.head.append(style);
-          }
+    .enableClipBoard()
+    .perform((done) => {
+      browser.execute(function () { // hide tooltips
+        function addStyle(styleString) {
+          const style = document.createElement('style');
+          style.textContent = styleString;
+          document.head.append(style);
+        }
 
-          addStyle(`
-            .bs-popover-right {
-              display:none !important;
-            }
-            .bs-popover-top {
-              display:none !important;
-            }
-            .bs-popover-left {
-              display:none !important;
-            }
-            .bs-popover-bottom {
-              display:none !important;
-            }
+        addStyle(`
+          .popover {
+            display:none !important;
+          }
           `);
-        })
-      }
+      }, [], done())
+    })
+    .perform(() => {
+      browser.execute(function () {
+        (window as any).logs = [];
+        (console as any).browserLog = console.log;
+        (console as any).browserError = console.error
+        console.log = function () {
+          (window as any).logs.push(JSON.stringify(arguments));
+          (console as any).browserLog(...arguments)
+        }
+        console.error = function () {
+          (window as any).logs.push(JSON.stringify(arguments));
+          (console as any).browserError(...arguments)
+        }
+      })
+    })
+    .perform(() => {
       if (preloadPlugins) {
         initModules(browser, () => {
           browser
-
+            .pause(4000)
             .clickLaunchIcon('solidity')
             .waitForElementVisible('[for="autoCompile"]')
             .click('[for="autoCompile"]')
             .verify.elementPresent('[data-id="compilerContainerAutoCompile"]:checked')
             .perform(() => { callback() })
         })
-
       } else {
         callback()
       }

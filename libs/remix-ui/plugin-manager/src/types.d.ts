@@ -1,4 +1,4 @@
-import { PermissionHandler } from './app/ui/persmission-handler'
+import { PermissionHandler } from './app/ui/permission-handler'
 import { PluginManager } from '@remixproject/engine/lib/manager'
 import { EventEmitter } from 'events'
 import { Engine } from '@remixproject/engine/lib/engine'
@@ -50,9 +50,9 @@ export class PluginManagerSettings {
   currentSetting: any
   onValidation(): void
   /** Clear one permission from a plugin */
-  clearPersmission(from: string, to: string, method: string): void
-  /** Clear all persmissions from a plugin */
-  clearAllPersmission(to: string): void
+  clearPermission(from: string, to: string, method: string): void
+  /** Clear all permissions from a plugin */
+  clearAllPermission(to: string): void
   settings(): any
   render(): any
 }
@@ -103,34 +103,34 @@ declare class LocalPlugin {
      * @returns {Promise<{api: any, profile: any}>} A promise with the new plugin profile
      */
   open(plugins: any[]): Promise<{
-        api: any
-        profile: any
-    }>
-
+    api: any
     profile: any
-    /**
+  }>
+
+  profile: any
+  /**
      * Create the object to add to the plugin-list
      */
-    create(): any
-    updateName({ target }: {
-        target: any
-    }): void
+  create(): any
+  updateName({ target }: {
+    target: any
+  }): void
 
-    updateUrl({ target }: {
-        target: any
-    }): void
+  updateUrl({ target }: {
+    target: any
+  }): void
 
-    updateDisplayName({ target }: {
-        target: any
-    }): void
+  updateDisplayName({ target }: {
+    target: any
+  }): void
 
-    updateProfile(key: any, e: any): void
-    updateMethods({ target }: {
-        target: any
-    }): void
+  updateProfile(key: any, e: any): void
+  updateMethods({ target }: {
+    target: any
+  }): void
 
-    /** The form to create a local plugin */
-    form(): any
+  /** The form to create a local plugin */
+  form(): any
 }
 
 export interface PluginManagerContextProviderProps {
@@ -148,11 +148,11 @@ export interface RemixUiPluginManagerProps {
  **/
 declare class PluginLoader {
   get currentLoader(): any
-    donotAutoReload: string[]
-    loaders: Record<any, any>
-    current: string
-    set(plugin: any, actives: any): void
-    get(): any
+  donotAutoReload: string[]
+  loaders: Record<any, any>
+  current: string
+  set(plugin: any, actives: any): void
+  get(): any
 }
 // eslint-disable-next-line no-redeclare
 export type PluginManagerSettings = {

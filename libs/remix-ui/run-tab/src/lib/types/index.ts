@@ -1,11 +1,12 @@
 import { Ref } from 'react'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
-import { ContractData, FuncABI } from '@remix-project/core-plugin'
+import { ContractData, FuncABI, OverSizeLimit } from '@remix-project/core-plugin'
 import { RunTab } from './run-tab'
 import { SolcInput, SolcOutput } from '@openzeppelin/upgrades-core'
 import { LayoutCompatibilityReport } from '@openzeppelin/upgrades-core/dist/storage/report'
 export interface RunTabProps {
-  plugin: RunTab
+  plugin: RunTab,
+  initialState?: RunTabState
 }
 
 export interface Contract {
@@ -19,6 +20,23 @@ export interface Contract {
 export interface ContractList {
   [file: string]: Contract[]
 }
+
+export type Provider = {
+  name: string
+  displayName: string
+  provider: {
+    sendAsync: () => void
+  },
+  init: () => void
+  title: string
+  dataId: string
+  options: { [key: string]: string}
+  fork: boolean
+  isVM: boolean
+  isInjected: boolean
+  position: number
+}
+
 export interface RunTabState {
   accounts: {
     loadedAccounts: Record<string, string>,
@@ -33,15 +51,9 @@ export interface RunTabState {
   selectExEnv: string,
   personalMode: boolean,
   networkName: string,
+  chainId: string
   providers: {
-    providerList: {
-      id?: string,
-      dataId?: string,
-      title?: string,
-      value: string,
-      fork?: string
-      content: string
-    }[],
+    providerList: Provider[],
     isRequesting: boolean,
     isSuccessful: boolean,
     error: string
@@ -92,7 +104,10 @@ export interface RunTabState {
       balance?: number,
       name: string,
       decodedResponse?: Record<number, any>,
-      abi?: any
+      abi?: any,
+      isPinned?: boolean,
+      pinnedAt?: number,
+      filePath?: string
     }[],
     error: string
   },
@@ -103,7 +118,8 @@ export interface RunTabState {
   remixdActivated: boolean,
   proxy: {
     deployments: { address: string, date: string, contractName: string }[]
-  }
+  },
+  compilerVersion?: string
 }
 
 export interface SettingsProps {
@@ -124,18 +140,12 @@ export interface SettingsProps {
   personalMode: boolean,
   networkName: string,
   providers: {
-    providerList: {
-      id?: string,
-      dataId?: string,
-      title?: string,
-      value: string,
-      fork?: string
-      content: string
-    }[],
+    providerList: Provider[],
     isRequesting: boolean,
     isSuccessful: boolean,
     error: string
   },
+  addFile: (path: string, content: string) => void,
   setExecutionContext: (executionContext: { context: string, fork: string }) => void,
   createNewBlockchainAccount: (cbMessage: JSX.Element) => void,
   setPassphrase: (passphrase: string) => void,
@@ -150,14 +160,7 @@ export interface SettingsProps {
 export interface EnvironmentProps {
   selectedEnv: string,
   providers: {
-    providerList: {
-      id?: string,
-      dataId?: string,
-      title?: string,
-      value: string,
-      fork?: string
-      content: string
-    }[],
+    providerList: Provider[],
     isRequesting: boolean,
     isSuccessful: boolean,
     error: string
@@ -178,6 +181,7 @@ export interface AccountProps {
     isSuccessful: boolean,
     error: string
   },
+  addFile: (path: string, content: string) => void,
   setAccount: (account: string) => void,
   personalMode: boolean,
   createNewBlockchainAccount: (cbMessage: JSX.Element) => void,
@@ -250,7 +254,7 @@ export interface ContractDropdownProps {
     publishToStorage: (storage: 'ipfs' | 'swarm',
     contract: ContractData) => void,
     mainnetPrompt: MainnetPrompt,
-    isOverSizePrompt: () => JSX.Element,
+    isOverSizePrompt: (values: OverSizeLimit) => JSX.Element,
     args,
     deployMode: DeployMode[]) => void,
   ipfsCheckedState: boolean,
@@ -266,8 +270,13 @@ export interface ContractDropdownProps {
   setSelectedContract: (contractName: string) => void
   remixdActivated: boolean,
   isValidProxyAddress?: (address: string) => Promise<boolean>,
-  isValidProxyUpgrade?: (proxyAddress: string, contractName: string, solcInput: SolcInput, solcOuput: SolcOutput) => Promise<LayoutCompatibilityReport | { ok: boolean, pass: boolean, warning: boolean }>,
+  isValidProxyUpgrade?: (proxyAddress: string, contractName: string, solcInput: SolcInput, solcOuput: SolcOutput, solcVersion: string) => Promise<LayoutCompatibilityReport | { ok: boolean, pass: boolean, warning: boolean }>,
   proxy: { deployments: { address: string, date: string, contractName: string }[] }
+  solCompilerVersion: { version: string, canReceive: boolean }
+  setCompilerVersion: React.Dispatch<React.SetStateAction<{
+    version: string;
+    canReceive: boolean;}>>
+  getCompilerVersion: () => void
 }
 
 export interface RecorderProps {
@@ -279,6 +288,7 @@ export interface RecorderProps {
   scenarioPrompt: (msg: string, defaultValue: string) => JSX.Element,
   count: number
   currentFile: string
+  plugin: RunTab
 }
 
 export interface InstanceContainerProps {
@@ -289,12 +299,17 @@ export interface InstanceContainerProps {
       balance?: number,
       name: string,
       decodedResponse?: Record<number, any>,
-      abi?: any
+      abi?: any,
+      isPinned?: boolean,
+      pinnedAt?: number,
+      filePath?: string
     }[],
     error: string
   },
   clearInstances: () => void,
   removeInstance: (index: number) => void,
+  pinInstance: (index: number, pinnedAt: number, filePath: string) => void,
+  unpinInstance: (index: number) => void,
   getContext: () => 'memory' | 'blockchain',
   runTransactions: (
     instanceIndex: number,
@@ -314,6 +329,11 @@ export interface InstanceContainerProps {
   mainnetPrompt: (tx: Tx, network: Network, amount: string, gasEstimation: string, gasFees: (maxFee: string, cb: (txFeeText: string, priceStatus: boolean) => void) => void, determineGasPrice: (cb: (txFeeText: string, gasPriceValue: string, gasPriceStatus: boolean) => void) => void) => JSX.Element,
   sendValue: string,
   getFuncABIInputs: (funcABI: FuncABI) => string
+  exEnvironment: string
+  editInstance: (instance) => void
+  plugin: RunTab
+  solcVersion: { version: string, canReceive: boolean }
+  getVersion: any
 }
 
 export interface Modal {
@@ -368,6 +388,11 @@ export interface ContractGUIProps {
   isValidProxyAddress?: (address: string) => Promise<boolean>,
   isValidProxyUpgrade?: (proxyAddress: string) => Promise<LayoutCompatibilityReport | { ok: boolean, pass: boolean, warning: boolean }>,
   modal?: (title: string, message: string | JSX.Element, okLabel: string, okFn: () => void, cancelLabel?: string, cancelFn?: () => void, okBtnClass?: string, cancelBtnClass?: string) => void
+  solcVersion?: { version: string, canReceive: boolean }
+  setSolcVersion?: React.Dispatch<React.SetStateAction<{
+    version: string;
+    canReceive: boolean;}>>
+  getVersion: () => void
 }
 export interface MainnetProps {
   network: Network,
@@ -393,10 +418,15 @@ export interface UdappProps {
     balance?: number,
     name: string,
     decodedResponse?: Record<number, any>,
-    abi?: any
+    abi?: any,
+    isPinned?: boolean
+    pinnedAt?: number,
+    filePath?: string
   },
   context: 'memory' | 'blockchain',
   removeInstance: (index: number) => void,
+  pinInstance: (index: number, pinnedAt: number, filePath: string) => void,
+  unpinInstance: (index: number) => void,
   index: number,
   gasEstimationPrompt: (msg: string) => JSX.Element,
   passphrasePrompt: (message: string) => JSX.Element,
@@ -416,6 +446,11 @@ export interface UdappProps {
     funcIndex?: number) => void,
   sendValue: string,
   getFuncABIInputs: (funcABI: FuncABI) => string
+  exEnvironment: string
+  editInstance: (instance) => void
+  plugin: RunTab
+  solcVersion: { version: string, canReceive: boolean }
+  getVersion: () => string
 }
 
 export interface DeployButtonProps {

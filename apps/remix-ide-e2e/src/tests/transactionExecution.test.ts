@@ -15,18 +15,18 @@ module.exports = {
     browser.testContracts('Untitled.sol', sources[0]['Untitled.sol'], ['TestContract'])
       .clickLaunchIcon('udapp')
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
-      .click('.udapp_contractActionsContainerSingle > button')
+      .click('.udapp_contractActionsContainerSingle > div')
       .clickInstance(0)
       .clickFunction('f - transact (not payable)')
       .testFunction('last',
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded output': { 0: 'uint256: 8' }
         })
       .clickFunction('g - transact (not payable)')
       .testFunction('last',
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded output': {
             0: 'uint256: 345',
             1: 'string: comment_comment_',
@@ -40,12 +40,12 @@ module.exports = {
   'Test Complex Return Values #group1': function (browser: NightwatchBrowser) {
     browser.testContracts('returnValues.sol', sources[1]['returnValues.sol'], ['testReturnValues'])
       .clickLaunchIcon('udapp')
-      .click('.udapp_contractActionsContainerSingle > button')
+      .click('.udapp_contractActionsContainerSingle > div')
       .clickInstance(0)
-      .clickFunction('retunValues1 - transact (not payable)')
+      .clickFunction('returnValues1 - transact (not payable)')
       .testFunction('last',
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded output': {
             0: 'bool: _b true',
             1: 'uint256: _u 345',
@@ -53,10 +53,10 @@ module.exports = {
             3: 'address: _a 0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c'
           }
         })
-      .clickFunction('retunValues2 - transact (not payable)')
+      .clickFunction('returnValues2 - transact (not payable)')
       .testFunction('last',
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded output': {
             0: 'bytes1: _b 0x12',
             1: 'bytes2: _b2 0x1223',
@@ -70,10 +70,10 @@ module.exports = {
             9: 'bytes32: _b32 0x0325235325325235325235325235320000000000000000000000000000000000'
           }
         }).pause(500)
-      .clickFunction('retunValues3 - transact (not payable)')
+      .clickFunction('returnValues3 - transact (not payable)')
       .testFunction('last',
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded output': {
             0: 'uint8: _en 2',
             1: 'int256[5][]: _a1 1,-45,-78,56,60,-1,42,334,-45455,-446,1,10,-5435,45,-7'
@@ -84,12 +84,12 @@ module.exports = {
   'Test Complex Input Values #group2': function (browser: NightwatchBrowser) {
     browser.testContracts('inputValues.sol', sources[2]['inputValues.sol'], ['test'])
       .clickLaunchIcon('udapp')
-      .click('.udapp_contractActionsContainerSingle > button')
+      .click('.udapp_contractActionsContainerSingle > div')
       .clickInstance(0)
       .clickFunction('inputValue1 - transact (not payable)', { types: 'uint256 _u, int256 _i, string _str', values: '"2343242", "-4324324", "string _ string _  string _  string _  string _  string _  string _  string _  string _  string _"' })
       .testFunction('last',
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded output': {
             0: 'uint256: _uret 2343242',
             1: 'int256: _iret -4324324',
@@ -99,7 +99,7 @@ module.exports = {
       .pause(500)
       .clickFunction('inputValue2 - transact (not payable)', { types: 'uint256[3] _n, bytes8[4] _b8', values: '[1,2,3], ["0x1234000000000000", "0x1234000000000000","0x1234000000000000","0x1234000000000000"]' })
       .testFunction('last', {
-        status: 'true Transaction mined and execution succeed',
+        status: '0x1 Transaction mined and execution succeed',
         'decoded output': {
           0: 'uint256[3]: _nret 1,2,3',
           1: 'bytes8[4]: _b8ret 0x1234000000000000,0x1234000000000000,0x1234000000000000,0x1234000000000000'
@@ -129,7 +129,7 @@ module.exports = {
     browser.testContracts('eventFunctionInput.sol', sources[3]['eventFunctionInput.sol'], ['C'])
       .clickLaunchIcon('udapp')
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
-      .click('.udapp_contractActionsContainerSingle > button')
+      .click('.udapp_contractActionsContainerSingle > div')
       .clickInstance(0)
       .click('*[data-id="deployAndRunClearInstances"]')
   },
@@ -137,21 +137,32 @@ module.exports = {
   'Should use scientific notation as parameters #group2': function (browser: NightwatchBrowser) {
     browser.testContracts('scientific_notation.sol', sources[8]['scientific_notation.sol'], ['test'])
       .clickLaunchIcon('udapp')
-      .click('.udapp_contractActionsContainerSingle > button')
+      .click('.udapp_contractActionsContainerSingle > div')
       .clickInstance(0)
       .clickFunction('inputValue1 - transact (not payable)', { types: 'uint256 _u, int256 _i', values: '"101e3", "-1.13e4"' })
       .waitForElementContainsText('*[data-id="terminalJournal"]', '101000', 60000)
       .waitForElementContainsText('*[data-id="terminalJournal"]', '-11300', 60000)
       .clickFunction('inputValue2 - transact (not payable)', { types: 'uint256 _u', values: '2.345e10' })
       .waitForElementContainsText('*[data-id="terminalJournal"]', '2340000000', 60000)
-      .click('*[data-id="deployAndRunClearInstances"]')      
+      .clickFunction('inputValue3 - transact (not payable)', { types: 'uint256[] _u', values: '["2.445e10", "13e1"]' })
+      .waitForElementContainsText('*[data-id="terminalJournal"]', '24450000000', 60000)
+      .waitForElementContainsText('*[data-id="terminalJournal"]', '130', 60000)
+      .click('*[data-id="deployAndRunClearInstances"]')
+  },
+
+  'Should filter displayed transactions #group2': function (browser: NightwatchBrowser) {
+    browser
+      // it should contain: 0xd9145CCE52D386f254917e481eB44e9943F39138
+      .checkTerminalFilter('0xd9145CCE52D386f254917e481eB44e9943F39138', '0xd9145CCE52D386f254917e481eB44e9943F39138', false)
+      // it should not contain: 0xd9145CCE52D386f254917e481eB44e9943F39140 (it ends with 40)
+      .checkTerminalFilter('0xd9145CCE52D386f254917e481eB44e9943F39140', '0xd9145CCE52D386f254917e481eB44e9943F39138', true)
   },
 
   'Should Compile and Deploy a contract which define a custom error, the error should be logged in the terminal #group3': function (browser: NightwatchBrowser) {
     browser.testContracts('customError.sol', sources[4]['customError.sol'], ['C'])
       .clickLaunchIcon('udapp')
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
-      .click('.udapp_contractActionsContainerSingle > button')
+      .click('.udapp_contractActionsContainerSingle > div')
       .clickInstance(0)
       .clickFunction('g - transact (not payable)')
       .journalLastChildIncludes('Error provided by the contract:')
@@ -163,17 +174,18 @@ module.exports = {
       .journalLastChildIncludes('"documentation": "param1"')
       .journalLastChildIncludes('"documentation": "param2"')
       .journalLastChildIncludes('"documentation": "param3"')
-      .journalLastChildIncludes('Debug the transaction to get more information.')
       .click('*[data-id="deployAndRunClearInstances"]')
   },
 
   'Should Compile and Deploy a contract which define a custom error, the error should be logged in the terminal , using London VM Fork #group3': function (browser: NightwatchBrowser) {
     browser
-      .clickLaunchIcon('udapp')
+      .clickLaunchIcon('solidity')
+      .click('.remixui_compilerConfigSection')
+      .setValue('#evmVersionSelector', 'london') // Set EVM version as fork version
       .clearTransactions()
       .switchEnvironment('vm-london') // switch to London fork
       .selectAccount('0xCA35b7d915458EF540aDe6068dFe2F44E8fa733c') // this account will be used for this test suite
-      .click('.udapp_contractActionsContainerSingle > button')
+      .click('.udapp_contractActionsContainerSingle > div')
       .clickInstance(0)
       .clickFunction('g - transact (not payable)')
       .journalLastChildIncludes('Error provided by the contract:')
@@ -185,13 +197,12 @@ module.exports = {
       .journalLastChildIncludes('"documentation": "param1"')
       .journalLastChildIncludes('"documentation": "param2"')
       .journalLastChildIncludes('"documentation": "param3"')
-      .journalLastChildIncludes('Debug the transaction to get more information.')
   },
 
   'Should Compile and Deploy a contract which define a custom error in a library, the error should be logged in the terminal #group3': function (browser: NightwatchBrowser) {
     browser.testContracts('customErrorLib.sol', sources[5]['customErrorLib.sol'], ['D'])
       .clickLaunchIcon('udapp')
-      .click('.udapp_contractActionsContainerSingle > button')
+      .click('.udapp_contractActionsContainerSingle > div')
       .clickInstance(1)
       .clickFunction('h - transact (not payable)')
       .journalLastChildIncludes('Error provided by the contract:')
@@ -203,7 +214,6 @@ module.exports = {
       .journalLastChildIncludes('"documentation": "param1 from library"')
       .journalLastChildIncludes('"documentation": "param2 from library"')
       .journalLastChildIncludes('"documentation": "param3 from library"')
-      .journalLastChildIncludes('Debug the transaction to get more information.')
   },
 
   'Should compile and deploy 2 simple contracts, the contract creation component state should be correctly reset for the deployment of the second contract #group4': function (browser: NightwatchBrowser) {
@@ -219,7 +229,7 @@ module.exports = {
       .clickFunction('store - transact (not payable)', { types: 'uint256 num', values: '24' })
       .testFunction('last', // we check if the contract is actually reachable.
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded input': {
             'uint256 num': '24'
           }
@@ -234,7 +244,11 @@ module.exports = {
       .setSolidityCompilerVersion('soljson-v0.8.17+commit.8df45f5f.js')
       .clickLaunchIcon('udapp')
       .switchEnvironment('vm-mainnet-fork')
-      .waitForElementPresent('select[data-id="runTabSelectAccount"] option[value="0xdD870fA1b7C4700F2BD7f44238821C26f7392148"]') // wait for the udapp to load the list of accounts
+      .waitForElementPresent({
+        locateStrategy: 'css selector',
+        selector: 'select[data-id="runTabSelectAccount"] option[value="0xdD870fA1b7C4700F2BD7f44238821C26f7392148"]',
+        timeout: 250000
+      }) // wait for the udapp to load the list of accounts
       .selectContract('MyResolver')
       .createContract('')
       .clickInstance(0)
@@ -244,6 +258,51 @@ module.exports = {
       .clickFunction('resolve - call')
       .perform((done) => {
         browser.verifyCallReturnValue(addressRef, ['0:address: 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045'])
+          .perform(() => done())
+      })
+  },
+
+  'Should stay connected in the mainnet VM fork and execute state changing operations and non state changing operations #group5': function (browser: NightwatchBrowser) {
+    let addressRef
+    browser
+      .click('*[data-id="deployAndRunClearInstances"]') // clear udapp instances
+      .clickLaunchIcon('filePanel')
+      .testContracts('basic_state.sol', sources[9]['basic_state.sol'], ['BasicState'])
+      .clickLaunchIcon('udapp')
+      .selectContract('BasicState')
+      .createContract('')
+      .clickInstance(0)
+      .getAddressAtPosition(0, (address) => {
+        addressRef = address
+      })
+      .clickFunction('cake - call')
+      .pause(500)
+      .perform((done) => {
+        browser.verifyCallReturnValue(addressRef, ['0:uint256: 0'])
+          .perform(() => done())
+      })
+      .clickFunction('up - transact (payable)')
+      .pause(500)
+      .clickFunction('cake - call')
+      .pause(1000)
+      .perform((done) => {
+        browser.verifyCallReturnValue(addressRef, ['0:uint256: 1'])
+          .perform(() => done())
+      })
+      .clickFunction('up - transact (payable)')
+      .pause(500)
+      .clickFunction('cake - call')
+      .pause(1000)
+      .perform((done) => {
+        browser.verifyCallReturnValue(addressRef, ['0:uint256: 2'])
+          .perform(() => done())
+      })
+      .clickFunction('up - transact (payable)')
+      .pause(500)
+      .clickFunction('cake - call')
+      .pause(1000)
+      .perform((done) => {
+        browser.verifyCallReturnValue(addressRef, ['0:uint256: 3'])
           .perform(() => done())
       })
   }
@@ -258,10 +317,10 @@ const sources = [
       contract TestContract { function f() public returns (uint) { return 8; }
       function g() public returns (uint, string memory, bool, uint) {
         uint payment = 345;
-        bool payed = true;
+        bool paid = true;
         string memory comment = "comment_comment_";
         uint month = 4;
-        return (payment, comment, payed, month); } }`
+        return (payment, comment, paid, month); } }`
     }
   },
   {
@@ -269,14 +328,14 @@ const sources = [
       content: `
   contract testReturnValues {
     enum ActionChoices { GoLeft, GoRight, GoStraight, SitStill }
-    function retunValues1 () public returns (bool _b, uint _u, int _i, address _a)  {
+    function returnValues1 () public returns (bool _b, uint _u, int _i, address _a)  {
         _b = true;
         _u = 345;
         _i = -345;
         _a = msg.sender;
     }
 
-    function retunValues2 () public returns (bytes1 _b, bytes2 _b2, bytes3 _b3, bytes memory _blit, bytes5 _b5, bytes6 _b6, string memory _str, bytes7 _b7, bytes22 _b22, bytes32 _b32)  {
+    function returnValues2 () public returns (bytes1 _b, bytes2 _b2, bytes3 _b3, bytes memory _blit, bytes5 _b5, bytes6 _b6, string memory _str, bytes7 _b7, bytes22 _b22, bytes32 _b32)  {
         _b = 0x12;
         _b2 = 0x1223;
         _b5 = hex"043245";
@@ -288,7 +347,7 @@ const sources = [
         _str = "this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string _ this is a long string";
     }
 
-    function retunValues3 () public returns (ActionChoices _en, int[5][] memory _a1)  {
+    function returnValues3 () public returns (ActionChoices _en, int[5][] memory _a1)  {
        _en = ActionChoices.GoStraight;
        int[5][] memory a = new int[5][](3);
        a[0] = [int(1),-45,-78,56,60];
@@ -333,7 +392,7 @@ contract C {
       content: `// SPDX-License-Identifier: GPL-3.0
 
       pragma solidity ^0.8.7;
-      
+
       /// error description
       /// @param a param1
       /// @param b param2
@@ -345,7 +404,7 @@ contract C {
           }
           function g() public {
               revert CustomError(2, 3, "error_string_2");
-          }          
+          }
       }`
     }
   },
@@ -354,7 +413,7 @@ contract C {
       content: `// SPDX-License-Identifier: GPL-3.0
 
       pragma solidity ^0.8.7;
-      
+
       library lib {
           /// error description from library
           /// @param a param1 from library
@@ -363,13 +422,13 @@ contract C {
           error CustomError(uint a, uint b, string c);
           function set() public {
               revert CustomError(48, 46, "error_string_from_library");
-          }      
-      }      
-      
+          }
+      }
+
       contract D {
           function h() public {
               lib.set();
-          }      
+          }
       }`
     }
   },
@@ -387,10 +446,10 @@ contract C {
       contract Owner {
 
           address private owner;
-          
+
           // event for EVM logging
           event OwnerSet(address indexed oldOwner, address indexed newOwner);
-          
+
           // modifier to check if caller is owner
           modifier isOwner() {
               // If the first argument of 'require' evaluates to 'false', execution terminates and all
@@ -401,7 +460,7 @@ contract C {
               require(msg.sender == owner, "Caller is not owner");
               _;
           }
-          
+
           /**
            * @dev Set contract deployer as owner
            */
@@ -420,7 +479,7 @@ contract C {
           }
 
           /**
-           * @dev Return owner address 
+           * @dev Return owner address
            * @return address of owner
            */
           function getOwner() external view returns (address) {
@@ -455,7 +514,7 @@ contract C {
           }
 
           /**
-           * @dev Return value 
+           * @dev Return value
            * @return value of 'number'
            */
           function retrieve() public view returns (uint256){
@@ -487,7 +546,7 @@ contract C {
                 return resolver.addr(node);
             }
         }
-        `      
+        `
     }
   }, {
     "scientific_notation.sol": {
@@ -501,8 +560,25 @@ contract C {
         function inputValue2 (uint _u) public {
           console.log(_u);
         }
+        function inputValue3 (uint[] memory _u) public {
+          console.log(_u[0]);
+          console.log(_u[1]);
+        }
       }
       `
+    }
+  },
+  {
+    'basic_state.sol': {
+      content:
+        `
+        contract BasicState {
+          uint public cake;
+          function up() public payable {
+             cake++;
+          }
+      }
+        `
     }
   }
 ]

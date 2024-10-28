@@ -5,6 +5,7 @@ import { EditorUI } from '@remix-ui/editor' // eslint-disable-line
 import { Plugin } from '@remixproject/engine'
 import * as packageJson from '../../../../../package.json'
 import { PluginViewWrapper } from '@remix-ui/helper'
+import { commitChange } from '@remix-ui/git'
 
 const EventManager = require('../../lib/events')
 
@@ -13,7 +14,7 @@ const profile = {
   name: 'editor',
   description: 'service - editor',
   version: packageJson.version,
-  methods: ['highlight', 'discardHighlight', 'clearAnnotations', 'addLineText', 'discardLineTexts', 'addAnnotation', 'gotoLine', 'revealRange', 'getCursorPosition', 'open', 'addModel','addErrorMarker', 'clearErrorMarkers', 'getText'],
+  methods: ['highlight', 'discardHighlight', 'clearAnnotations', 'addLineText', 'discardLineTexts', 'addAnnotation', 'gotoLine', 'revealRange', 'getCursorPosition', 'open', 'addModel','addErrorMarker', 'clearErrorMarkers', 'getText', 'getPositionAt', 'openReadOnly'],
 }
 
 class Editor extends Plugin {
@@ -51,7 +52,10 @@ class Editor extends Plugin {
       rs: 'rust',
       cairo: 'cairo',
       ts: 'typescript',
-      move: 'move'
+      move: 'move',
+      circom: 'circom',
+      nr: 'rust',
+      toml: 'toml'
     }
 
     this.activated = false
@@ -60,7 +64,8 @@ class Editor extends Plugin {
       onBreakPointAdded: (file, line) => this.triggerEvent('breakpointAdded', [file, line]),
       onBreakPointCleared: (file, line) => this.triggerEvent('breakpointCleared', [file, line]),
       onDidChangeContent: (file) => this._onChange(file),
-      onEditorMounted: () => this.triggerEvent('editorMounted', [])
+      onEditorMounted: () => this.triggerEvent('editorMounted', []),
+      onDiffEditorMounted: () => this.triggerEvent('diffEditorMounted', [])
     }
 
     // to be implemented by the react component
@@ -78,8 +83,10 @@ class Editor extends Plugin {
       editorAPI={state.api}
       themeType={state.currentThemeType}
       currentFile={state.currentFile}
+      currentDiffFile={state.currentDiffFile}
       events={state.events}
       plugin={state.plugin}
+      isDiff={state.isDiff}
     />
   }
 
@@ -99,8 +106,8 @@ class Editor extends Plugin {
       this.ref.clearDecorationsByPlugin = (filePath, plugin, typeOfDecoration) => this.clearDecorationsByPlugin(filePath, plugin, typeOfDecoration)      
       this.ref.keepDecorationsFor = (name, typeOfDecoration) => this.keepDecorationsFor(name, typeOfDecoration)
     }} id='editorView'>
-        <PluginViewWrapper plugin={this} />
-      </div>
+      <PluginViewWrapper plugin={this} />
+    </div>
   }
 
   renderComponent () {
@@ -108,6 +115,8 @@ class Editor extends Plugin {
       api: this.api,
       currentThemeType: this.currentThemeType,
       currentFile: this.currentFile,
+      currentDiffFile: this.currentDiffFile,
+      isDiff: this.isDiff,
       events: this.events,
       plugin: this
     })
@@ -174,15 +183,16 @@ class Editor extends Plugin {
     }
 
     this.saveTimeout = window.setTimeout(() => {
-      this.triggerEvent('contentChanged', [])
-      this.triggerEvent('requiringToSaveCurrentfile', [])
+      this.triggerEvent('contentChanged', [currentFile, input])
+      this.triggerEvent('requiringToSaveCurrentfile', [currentFile])
     }, 500)
   }
 
   _switchSession (path) {
-    if (path === this.currentFile) return
-    this.triggerEvent('sessionSwitched', [])
-    this.currentFile = path
+    if (path !== this.currentFile) {
+      this.triggerEvent('sessionSwitched', [])
+      this.currentFile = path
+    }
     this.renderComponent()
   }
 
@@ -238,10 +248,10 @@ class Editor extends Plugin {
    * @param {string} content Content of the file to open
    * @param {string} mode Mode for this file [Default is `text`]
    */
-  async _createSession (path, content, mode) {
+  async _createSession (path, content, mode, readOnly) {
     if (!this.activated) return
     
-    this.emit('addModel', content, mode, path, this.readOnlySessions[path])
+    this.emit('addModel', content, mode, path, readOnly || this.readOnlySessions[path])
     return {
       path,
       language: mode,
@@ -293,7 +303,7 @@ class Editor extends Plugin {
    * Get the text in the current session, if any.
    * @param {string} url Address of the content to retrieve.
    */
-   getText (url) {
+  getText (url) {
     if (this.sessions[url]) {
       return this.sessions[url].getValue()
     }
@@ -311,6 +321,7 @@ class Editor extends Plugin {
        - URL prepended with "browser"
        - URL not prepended with the file explorer. We assume (as it is in the whole app, that this is a "browser" URL
     */
+    this.isDiff = false
     if (!this.sessions[path]) {
       this.readOnlySessions[path] = false
       const session = await this._createSession(path, content, this._getMode(path))
@@ -332,7 +343,19 @@ class Editor extends Plugin {
       const session = await this._createSession(path, content, this._getMode(path))
       this.sessions[path] = session
     }
+    this.isDiff = false
     this._switchSession(path)
+  }
+
+  async openDiff(change) {
+    const hashedPathModified = change.readonly ? change.path + change.hashModified : change.path
+    const hashedPathOriginal = change.path + change.hashOriginal
+    const session = await this._createSession(hashedPathModified, change.modified, this._getMode(change.path), change.readonly)
+    await this._createSession(hashedPathOriginal, change.original, this._getMode(change.path), change.readonly)
+    this.sessions[hashedPathModified] = session
+    this.currentDiffFile = hashedPathOriginal
+    this.isDiff = true
+    this._switchSession(hashedPathModified)
   }
 
   /**
@@ -359,7 +382,7 @@ class Editor extends Plugin {
 
   /**
    * Path of the currently editing file
-   * returns `undefined` if no session is being editer
+   * returns `undefined` if no session is being edited
    * @return {String} path of the current session
    */
   current () {
@@ -401,10 +424,7 @@ class Editor extends Plugin {
    */
   editorFontSize (incr) {
     if (!this.activated) return
-    const newSize = this.api.getFontSize() + incr
-    if (newSize >= 6) {
-      this.emit('setFontSize', newSize)
-    }
+    this.emit('setFontSize', incr)
   }
 
   /**
@@ -437,7 +457,6 @@ class Editor extends Plugin {
   revealRange (startLineNumber, startColumn, endLineNumber, endColumn) {
     if (!this.activated) return
     this.emit('focus')
-    console.log(startLineNumber, startColumn, endLineNumber, endColumn)
     this.emit('revealRange', startLineNumber, startColumn, endLineNumber, endColumn)
   }
 
@@ -451,7 +470,7 @@ class Editor extends Plugin {
   }
 
   /**
-   * Clears all the decorations for the given @arg filePath and @arg plugin, if none is given, the current sesssion is used.
+   * Clears all the decorations for the given @arg filePath and @arg plugin, if none is given, the current session is used.
    * An annotation has the following shape:
       column: -1
       row: -1
@@ -504,7 +523,7 @@ class Editor extends Plugin {
   }
 
   /**
-   * Clears all the annotations for the given @arg filePath, the plugin name is retrieved from the context, if none is given, the current sesssion is used.
+   * Clears all the annotations for the given @arg filePath, the plugin name is retrieved from the context, if none is given, the current session is used.
    * An annotation has the following shape:
       column: -1
       row: -1
@@ -577,6 +596,10 @@ class Editor extends Plugin {
     for (const session in this.sessions) {
       this.clearDecorationsByPlugin(session, from, 'lineTextPerFile', this.registeredDecorations, this.currentDecorations)
     }
+  }
+
+  getPositionAt(offset) {
+    return this.api.getPositionAt(offset)
   }
 }
 

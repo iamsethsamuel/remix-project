@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react' // eslint-disable-line
+import React, {useState, useEffect} from 'react' // eslint-disable-line
 import { TreeViewItemProps } from '../../types'
 
 import './tree-view-item.css'
@@ -12,18 +12,31 @@ export const TreeViewItem = (props: TreeViewItemProps) => {
   }, [expand])
 
   return (
-    <li ref={innerRef} key={`treeViewLi${id}`} data-id={`treeViewLi${id}`} className='li_tv' {...otherProps}>
-      <div key={`treeViewDiv${id}`} data-id={`treeViewDiv${id}`} className={`d-flex flex-row align-items-center ${labelClass}`} onClick={() => !controlBehaviour && setIsExpanded(!isExpanded)}>
-        { children && showIcon ? <div
-          className={isExpanded ? `px-1 ${iconY} caret caret_tv` : `px-1 ${iconX} caret caret_tv`}
-          style={{ visibility: children ? 'visible' : 'hidden' }}
-          ></div> : icon ? <div className={`pr-3 pl-1 ${icon} caret caret_tv`}></div> : null
-        }
-        <span className='w-100 pl-1'>
-          { label }
-        </span>
+    <li
+      ref={innerRef}
+      key={`treeViewLi${id}`}
+      data-id={`treeViewLi${id}`}
+      className="li_tv remixui_mouseover"
+      {...otherProps}
+    >
+      <div
+        key={`treeViewDiv${id}`}
+        data-id={`treeViewDiv${id}`}
+        className={`d-flex flex-row align-items-center ${labelClass}`}
+        onClick={() => !controlBehaviour && setIsExpanded(!isExpanded)}
+      >
+        {children && showIcon ? (
+          <div className={isExpanded ? `pl-2 ${iconY}` : `pl-2 ${iconX} caret caret_tv`}
+            style={{ visibility: children ? 'visible' : 'hidden' }}
+          ></div>
+        ) : icon ? (
+          <div className={`pr-2 pl-2 ${icon} caret caret_tv`}></div>
+        ) : null}
+        <span className="w-100 ml-1 pl-2">{label}</span>
       </div>
-      { isExpanded ? children : null }
+      {isExpanded ? <div className="pl-3">
+        {children}
+      </div> : null}
     </li>
   )
 }

@@ -1,4 +1,4 @@
-import Web3 from 'web3'
+import { Web3 } from 'web3'
 import { init , traceHelper, TransactionDebugger as Debugger } from '@remix-project/remix-debug'
 import { CompilerAbstract } from '@remix-project/remix-solidity'
 import { lineText } from '@remix-ui/editor'
@@ -14,9 +14,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     const self = this
     this.web3Provider = {
       sendAsync (payload, callback) {
-        self.call('web3Provider', 'sendAsync', payload)
-          .then(result => callback(null, result))
-          .catch(e => callback(e))
+        return self.call('web3Provider', 'sendAsync', payload)
       }
     }
     this._web3 = new Web3(this.web3Provider)
@@ -49,16 +47,16 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     await this.call('editor', 'highlight', lineColumnPos, path, '', { focus: true })
     const label = `${stepDetail.op} costs ${stepDetail.gasCost} gas - this line costs ${lineGasCost} gas - ${stepDetail.gas} gas left`
     const linetext: lineText = {
-        content: label,
-        position: lineColumnPos,
-        hide: false,
-        className: 'text-muted small',
-        afterContentClassName: 'text-muted small fas fa-gas-pump pl-4',
-        from: 'debugger',
-        hoverMessage: [{
-            value: label,
-        },
-        ],
+      content: label,
+      position: lineColumnPos,
+      hide: false,
+      className: 'text-muted small',
+      afterContentClassName: 'text-muted small fas fa-gas-pump pl-4',
+      from: 'debugger',
+      hoverMessage: [{
+        value: label,
+      },
+      ],
     }
     await this.call('editor', 'addLineText' as any, linetext, path)
   }
@@ -110,7 +108,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     let web3
     let network
     try {
-      network = await this.call('network', 'detectNetwork')    
+      network = await this.call('network', 'detectNetwork')
     } catch (e) {
       web3 = this.web3()
     }
@@ -163,7 +161,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
     else this._web3 = this.initialWeb3
     init.extendWeb3(this._web3)
     if (this.onDebugRequestedListener) {
-      this.onDebugRequestedListener(hash, web3).then((debuggerBackend) => {
+      this.onDebugRequestedListener(hash, this._web3).then((debuggerBackend) => {
         this.debuggerBackend = debuggerBackend
       })
     }
@@ -172,7 +170,7 @@ export const DebuggerApiMixin = (Base) => class extends Base {
   onActivation () {
     this.on('editor', 'breakpointCleared', (fileName, row) => { if (this.onBreakpointClearedListener) this.onBreakpointClearedListener(fileName, row) })
     this.on('editor', 'breakpointAdded', (fileName, row) => { if (this.onBreakpointAddedListener) this.onBreakpointAddedListener(fileName, row) })
-    this.on('editor', 'contentChanged', () => { if (this.onEditorContentChangedListener) this.onEditorContentChangedListener() })  
+    this.on('editor', 'contentChanged', () => { if (this.onEditorContentChangedListener) this.onEditorContentChangedListener() })
     this.on('network', 'providerChanged', (provider) => { if (this.onEnvChangedListener) this.onEnvChangedListener(provider) })
   }
 
@@ -185,14 +183,26 @@ export const DebuggerApiMixin = (Base) => class extends Base {
 
   showMessage (title: string, message: string) {}
 
-  onStartDebugging (debuggerBackend: any) {
-    this.call('layout', 'maximiseSidePanel')
+  async onStartDebugging (debuggerBackend: any) {
+    const pinnedPlugin = await this.call('pinnedPanel', 'currentFocus')
+
+    if (pinnedPlugin === 'debugger') {
+      this.call('layout', 'maximisePinnedPanel')
+    } else {
+      this.call('layout', 'maximiseSidePanel')
+    }
     this.emit('startDebugging')
     this.debuggerBackend = debuggerBackend
   }
 
-  onStopDebugging () {
-    this.call('layout', 'resetSidePanel')
+  async onStopDebugging () {
+    const pinnedPlugin = await this.call('pinnedPanel', 'currentFocus')
+
+    if (pinnedPlugin === 'debugger') {
+      this.call('layout', 'resetPinnedPanel')
+    } else {
+      this.call('layout', 'resetSidePanel')
+    }
     this.emit('stopDebugging')
     this.debuggerBackend = null
   }

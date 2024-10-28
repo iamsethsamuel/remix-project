@@ -1,24 +1,24 @@
-import React, { useEffect, useState } from 'react' // eslint-disable-line
-import { ModalDialog } from '@remix-ui/modal-dialog' // eslint-disable-line
+import React, {useEffect, useState} from 'react' // eslint-disable-line
+import {ModalDialog} from '@remix-ui/modal-dialog' // eslint-disable-line
 
 import './toaster.css'
 
 /* eslint-disable-next-line */
 export interface ToasterProps {
   message: string | JSX.Element
-  timeOut?: number,
-  handleHide?: () => void,
+  timeOut?: number
+  handleHide?: () => void
   timestamp?: number
 }
 
 export const Toaster = (props: ToasterProps) => {
   const [state, setState] = useState<{
-    message: string | JSX.Element,
-    hide: boolean,
-    hiding: boolean,
-    timeOutId: any,
-    timeOut: number,
-    showModal: boolean,
+    message: string | JSX.Element
+    hide: boolean
+    hiding: boolean
+    timeOutId: any
+    timeOut: number
+    showModal: boolean
     showFullBtn: boolean
   }>({
     message: '',
@@ -33,20 +33,32 @@ export const Toaster = (props: ToasterProps) => {
   useEffect(() => {
     if (props.message) {
       const timeOutId = setTimeout(() => {
-        setState(prevState => {
+        setState((prevState) => {
           return { ...prevState, hiding: true }
         })
       }, state.timeOut)
 
-      setState(prevState => {
-        if (typeof props.message === 'string' && (props.message.length > 201)) {
+      setState((prevState) => {
+        if (typeof props.message === 'string' && props.message.length > 201) {
           const shortTooltipText = props.message.substring(0, 200) + '...'
 
-          return { ...prevState, hide: false, hiding: false, timeOutId, message: shortTooltipText }
+          return {
+            ...prevState,
+            hide: false,
+            hiding: false,
+            timeOutId,
+            message: shortTooltipText
+          }
         } else {
           const shortTooltipText = props.message
 
-          return { ...prevState, hide: false, hiding: false, timeOutId, message: shortTooltipText }
+          return {
+            ...prevState,
+            hide: false,
+            hiding: false,
+            timeOutId,
+            message: shortTooltipText
+          }
         }
       })
     }
@@ -61,13 +73,14 @@ export const Toaster = (props: ToasterProps) => {
   }, [state.hiding])
 
   const showFullMessage = () => {
-    setState(prevState => {
+    setState((prevState) => {
       return { ...prevState, showModal: true }
     })
   }
 
-  const hideFullMessage = () => { //eslint-disable-line
-    setState(prevState => {
+  const hideFullMessage = () => {
+    //eslint-disable-line
+    setState((prevState) => {
       return { ...prevState, showModal: false }
     })
   }
@@ -77,8 +90,15 @@ export const Toaster = (props: ToasterProps) => {
       clearTimeout(state.timeOutId)
     }
     props.handleHide && props.handleHide()
-    setState(prevState => {
-      return { ...prevState, message: '', hide: true, hiding: false, timeOutId: null, showModal: false }
+    setState((prevState) => {
+      return {
+        ...prevState,
+        message: '',
+        hide: true,
+        hiding: false,
+        timeOutId: null,
+        showModal: false
+      }
     })
   }
 
@@ -86,7 +106,7 @@ export const Toaster = (props: ToasterProps) => {
     if (state.timeOutId) {
       clearTimeout(state.timeOutId)
     }
-    setState(prevState => {
+    setState((prevState) => {
       return { ...prevState, timeOutId: null }
     })
   }
@@ -94,12 +114,12 @@ export const Toaster = (props: ToasterProps) => {
   const handleMouseLeave = () => {
     if (!state.timeOutId) {
       const timeOutId = setTimeout(() => {
-        setState(prevState => {
+        setState((prevState) => {
           return { ...prevState, hiding: true }
         })
       }, state.timeOut)
 
-      setState(prevState => {
+      setState((prevState) => {
         return { ...prevState, timeOutId }
       })
     }
@@ -107,25 +127,27 @@ export const Toaster = (props: ToasterProps) => {
 
   return (
     <>
-      <ModalDialog
-        id='toaster'
-        message={props.message}
-        cancelLabel='Close'
-        cancelFn={() => {}}
-        hide={!state.showModal}
-        handleHide={hideFullMessage}
-      />
-      { !state.hide &&
-        <div data-shared="tooltipPopup" className={`remixui_tooltip alert alert-info p-2 ${state.hiding ? 'remixui_animateTop' : 'remixui_animateBottom'}`} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      <ModalDialog id="toaster" message={props.message} cancelLabel="Close" cancelFn={() => {}} hide={!state.showModal} handleHide={hideFullMessage} />
+      {!state.hide && (
+        <div
+          data-shared="tooltipPopup"
+          className={`remixui_tooltip mb-4 alert alert-info p-2 ${state.hiding ? 'remixui_animateTop' : 'remixui_animateBottom'}`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
           <span className="px-2">
-            { state.message }
-            { state.showFullBtn && <button className="btn btn-secondary btn-sm mx-3" style={{ whiteSpace: 'nowrap' }} onClick={showFullMessage}>Show full message</button> }
+            {state.message}
+            {state.showFullBtn && (
+              <button className="btn btn-secondary btn-sm mx-3" style={{ whiteSpace: 'nowrap' }} onClick={showFullMessage}>
+                Show full message
+              </button>
+            )}
           </span>
           <span style={{ alignSelf: 'baseline' }}>
             <button data-id="tooltipCloseButton" className="fas fa-times btn-info mx-1 p-0" onClick={closeTheToaster}></button>
           </span>
         </div>
-      }
+      )}
     </>
   )
 }

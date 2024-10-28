@@ -14,16 +14,17 @@ module.exports = {
   },
   'Deploy SampleERC721 whose bytecode is very similar to ERC721': function (browser: NightwatchBrowser) {
     browser.clickLaunchIcon('filePanel')
-      .click('*[data-id="workspaceCreate"]')
+      .click('*[data-id="workspacesMenuDropdown"]')
+      .click('*[data-id="workspacecreate"]')
       // create contract
+      .waitForElementPresent('*[data-id="create-hashchecker"]')
+      .scrollAndClick('*[data-id="create-ozerc721"]')
       .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
-      .waitForElementVisible('[data-id="fileSystemModalDialogModalFooter-react"] > button')
+      .scrollAndClick('*[data-id="modalDialogCustomPromptTextCreate"]')
+      .setValue('*[data-id="modalDialogCustomPromptTextCreate"]', 'workspace_erc721')
       // eslint-disable-next-line dot-notation
       .execute(function () { document.querySelector('*[data-id="modalDialogCustomPromptTextCreate"]')['value'] = 'workspace_erc721' })
-      .click('select[id="wstemplate"]')
-      .click('select[id="wstemplate"] option[value=ozerc721]')
-      .waitForElementPresent('[data-id="fileSystemModalDialogModalFooter-react"] .modal-ok')
-      .execute(function () { (document.querySelector('[data-id="fileSystemModalDialogModalFooter-react"] .modal-ok') as HTMLElement).click() })
+      .modalFooterOKClick('TemplatesSelection')
       .pause(100)
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
       .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts/MyToken.sol"]')
@@ -60,7 +61,7 @@ module.exports = {
       .createContract('')
       .testFunction('last',
       {
-        status: 'true Transaction mined and execution succeed',
+        status: '0x1 Transaction mined and execution succeed',
         'decoded input': {}
       }).end()
   }

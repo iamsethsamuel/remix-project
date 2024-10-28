@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 
 export type localPluginReducerActionType = {
   type: 'show' | 'close',
@@ -6,9 +7,9 @@ export type localPluginReducerActionType = {
 
 export function localPluginToastReducer (currentState: string, toastAction: localPluginReducerActionType) {
   switch (toastAction.type) {
-    case 'show':
-      return `Cannot create Plugin : ${toastAction.payload!}`
-    default:
-      return currentState
+  case 'show':
+    return `Cannot create Plugin : ${toastAction.payload!}`
+  default:
+    return currentState
   }
 }

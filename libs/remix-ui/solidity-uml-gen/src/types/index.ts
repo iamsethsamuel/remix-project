@@ -1,5 +1,6 @@
 import { ViewPlugin } from '@remixproject/engine-web'
 import { customAction } from '@remixproject/plugin-api'
+import type { CompilerInput } from '@remix-project/remix-solidity'
 import React from 'react'
 
 export interface ISolidityUmlGen extends ViewPlugin {
@@ -16,9 +17,8 @@ export interface ISolidityUmlGen extends ViewPlugin {
     showUmlDiagram(path: string, svgPayload: string): void
     updateComponent(state: any): JSX.Element
     setDispatch(dispatch: React.Dispatch<any>): void
-    mangleSvgPayload(svgPayload: string) : Promise<string>
     generateCustomAction(action: customAction): Promise<void>
-    flattenContract (source: any, filePath: string, data: any): Promise<string>
+    flattenContract (source: any, filePath: string, data: any, input: CompilerInput): Promise<string>
     hideSpinner(): void
     renderComponent (): void
     triggerGenerateUml: boolean
@@ -27,5 +27,5 @@ export interface ISolidityUmlGen extends ViewPlugin {
 
 export type ThemeQualityType = { name: string, quality: 'light' | 'dark', url: string }
 
-export type ThemeSummary = { themeName: string, backgroundColor: string, textColor?: string,
+export type ThemeSummary = { name: string, quality: 'light' | 'dark', url: string, backgroundColor: string, textColor?: string,
 shapeColor?: string, fillColor?: string }

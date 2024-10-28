@@ -11,6 +11,7 @@
 * Licensed under MIT (https://github.com/twbs/bootstrap/blob/main/LICENSE)
 */@import url(https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap);
 :root {
+    --ai: #2de7f3;
     --blue:#2a9fd6;
     --indigo:#6610f2;
     --purple:#6f42c1;
@@ -66,6 +67,19 @@ body {
     text-align:left;
     background-color:#060606
 }
+
+*::-webkit-scrollbar {
+  width:  8px;
+  height: 6px;
+  background-color: var(--body-bg);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--secondary);
+  opacity: 0.3;
+  border-radius: 30px;
+}
+
 [tabindex="-1"]:focus:not(:focus-visible) {
     outline:0!important
 }
@@ -284,19 +298,19 @@ template {
     color:#fff
 }
 .h1,h1 {
-    font-size:4rem
-}
-.h2,h2 {
     font-size:3rem
 }
-.h3,h3 {
+.h2,h2 {
     font-size:2.5rem
 }
-.h4,h4 {
+.h3,h3 {
     font-size:2rem
 }
+.h4,h4 {
+    font-size:1.6rem
+}
 .h5,h5 {
-    font-size:1.5rem
+    font-size:1.3rem
 }
 .h6,h6 {
     font-size:.875rem
@@ -2119,6 +2133,7 @@ textarea.form-control {
 
 }
 .btn {
+    cursor: pointer;;
     display:inline-block;
     font-weight:400;
     color:#adafae;
@@ -2151,7 +2166,8 @@ textarea.form-control {
     box-shadow:0 0 0 .2rem rgba(42,159,214,.25)
 }
 .btn.disabled,.btn:disabled {
-    opacity:.65
+    opacity:.65;
+    cursor: not-allowed;
 }
 .btn:not(:disabled):not(.disabled) {
     cursor:pointer
@@ -2176,9 +2192,9 @@ a.btn.disabled,fieldset:disabled a.btn {
     box-shadow:0 0 0 .2rem rgba(74,173,220,.5)
 }
 .btn-primary.disabled,.btn-primary:disabled {
-    color:#fff;
-    background-color:#2a9fd6;
-    border-color:#2a9fd6
+  color: #a6bdcd;
+  background-color: #327b96;
+  border-color: #327b96;
 }
 .btn-primary:not(:disabled):not(.disabled).active,.btn-primary:not(:disabled):not(.disabled):active,.show>.btn-primary.dropdown-toggle {
     color:#fff;
@@ -2834,9 +2850,9 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
     border:0
 }
 .dropdown-item:focus,.dropdown-item:hover {
-    color:#fff;
-    text-decoration:none;
-    background-color:#2a9fd6
+  color: var(--text);
+  text-decoration: none;
+  background-color: var(--secondary);
 }
 .dropdown-item.active,.dropdown-item:active {
     color:#fff;
@@ -3929,7 +3945,8 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
     padding:1.25rem
 }
 .card-title {
-    margin-bottom:.75rem
+    margin-bottom:.75rem;
+    color: var(--text);
 }
 .card-subtitle {
     margin-top:-.375rem;
@@ -4419,9 +4436,9 @@ a.badge-dark.focus,a.badge-dark:focus {
     color:#311141
 }
 .alert-warning {
-    color:#854700;
-    background-color:#ffe7cc;
-    border-color:#ffdeb8
+    color: #fff;
+    background-color: #ffe7cc;
+    border-color: #ffdeb8
 }
 .alert-warning hr {
     border-top-color:#ffd29f
@@ -5030,7 +5047,8 @@ a.close.disabled {
 }
 .modal-header .close {
     padding:1rem 1rem;
-    margin:-1rem -1rem -1rem auto
+    margin:-1rem -1rem -1rem auto;
+    cursor: pointer;
 }
 .modal-title {
     margin-bottom:0;
@@ -5631,7 +5649,7 @@ a.bg-light:focus,a.bg-light:hover,button.bg-light:focus,button.bg-light:hover {
     background-color:#090909!important
 }
 .bg-dark {
-    background-color:#adafae!important
+    background-color:#2f3130!important
 }
 a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
     background-color:#939695!important
@@ -5641,6 +5659,9 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
 }
 .bg-transparent {
     background-color:transparent!important
+}
+.border-no-shift {
+  box-shadow: inset 0 0 0 1px #dee2e6;
 }
 .border {
     border:1px solid #dee2e6!important
@@ -8368,6 +8389,9 @@ a.text-danger:focus,a.text-danger:hover {
 }
 a.text-light:focus,a.text-light:hover {
     color:#000!important
+}
+.text-dark {
+  color: #babbcc !important;
 }
 .text-dark {
     color:#adafae!important

@@ -1,11 +1,11 @@
 # Contributing
 
-Everyone is very welcome to contribute on the codebase of Remix. Please reach us in [Gitter](https://gitter.im/ethereum/remix) in case of any queries.
+Everyone is very welcome to contribute on the codebase of Remix. Please join our [Discord](https://discord.gg/mh9hFCKkEq) in case of any queries.
 
 ## Development
 Remix libraries work closely with [Remix IDE](https://remix.ethereum.org). Each library has a readme to explain its application.
 
-When you add a code in any library, please ensure you add related tests. You can visit [here](https://github.com/ethereum/remix-ide#installation) to test your changes by linking the remix libraries with Remix IDE.
+When you add a code in any library, please ensure you add related unit tests.
 
 ## Coding style
 
@@ -27,7 +27,7 @@ Then you can replace the string with a intl component. The `id` prop will be the
 +  <FormattedMessage id="home.learn" />
 </label>
 ```
-In some cases, jsx maybe not acceptable, you can use `intl.formatMessage` .
+In some cases, jsx maybe not be acceptable, you can use `intl.formatMessage` .
 ```jsx
 <input
    ref={searchInputRef}
@@ -77,7 +77,7 @@ const locales = [
 ]
 ```
 You can find the language's `code, name, localeName` in this link
-https://github.com/ethereum/ethereum-org-website/blob/dev/i18n/config.json
+https://github.com/ethereum/ethereum-org-website/blob/dev/i18n.config.json
 
 ### Whether or not to use `defaultMessage`?
 If you search `FormattedMessage` or `intl.formatMessage` in this project, you will notice that most of them only have a `id` prop, but a few of them have a `defaultMessage` prop.
@@ -92,4 +92,22 @@ But in some cases, the `id` prop may not be static. For example,
  <FormattedMessage id={plugin?.profile.name + '.displayName'} defaultMessage={plugin?.profile.displayName || plugin?.profile.name} />
 </h6>
 ```
-You can't be sure there is a match key in locale file or not. So it will be better to provide a `defaultMessage` prop.
+You can't be sure whether there is a match key in locale file or not. So it will be better to provide a `defaultMessage` prop.
+
+### Should I update the non-english locale json files?
+You probably will have this question when you are updating the english locale json files. 
+
+Well, that depends.
+
+If you update an old json file, then you don't need to update it in other languages, because crowdin will do it for you.
+
+But if you add a new json file, only English is needed.
+
+### How to contribute on translations?
+Remix is using crowdin to manage translations. If you want to contribute on that, you can do it on crowdin. Check the link below. 
+
+https://crowdin.com/project/remix-translation
+
+There are many languages, just get into your language, and you will see a folder named `Remix UI`, where you can do the translations. 
+
+Not only you can do the translations, you can also review it. If you agree or disagree with some translations, you can vote YES or NO. If you vote NO, you can comment to explain why you vote NO, and give your translation.

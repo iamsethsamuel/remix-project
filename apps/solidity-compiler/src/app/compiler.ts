@@ -3,13 +3,13 @@
 import { PluginClient } from '@remixproject/plugin'
 import { createClient } from '@remixproject/plugin-webview'
 import { CompilerApiMixin } from '@remix-ui/solidity-compiler'
-import { ICompilerApi } from '@remix-project/remix-lib'
+import { ConfigurationSettings, ICompilerApi } from '@remix-project/remix-lib'
 import { CompileTabLogic } from '@remix-ui/solidity-compiler'
 
 const defaultCompilerParameters = {
   runs: '200',
   optimize: false,
-  version: 'soljson-v0.8.18+commit.87f61d96',
+  version: 'soljson-v0.8.24+commit.e11b9ed9',
   evmVersion: null, // compiler default
   language: 'Solidity',
   useFileConfiguration: false,
@@ -22,10 +22,13 @@ export class CompilerClientApi extends CompilerApiMixin(PluginClient) implements
     this.compileTabLogic = new CompileTabLogic(this, this.contentImport)
     this.compiler = this.compileTabLogic.compiler
     this.compileTabLogic.init()
-    this.initCompilerApi()    
+    this.initCompilerApi()
   }
+  getCompilerParameters: () => ConfigurationSettings
+  setCompilerParameters: (ConfigurationSettings?: any) => void
+  emit?: (key: string, ...payload: any) => void
 
-  getCompilerParameters () {
+  getCompilerQueryParameters () {
     const params = {
       runs: localStorage.getItem('runs') || defaultCompilerParameters.runs,
       optimize: localStorage.getItem('optimize') === 'true',
@@ -38,7 +41,7 @@ export class CompilerClientApi extends CompilerApiMixin(PluginClient) implements
     return params
   }
 
-  setCompilerParameters (params) {
+  setCompilerQueryParameters (params) {
     for (const key of Object.keys(params)) {
       localStorage.setItem(key, params[key])
     }
@@ -54,5 +57,9 @@ export class CompilerClientApi extends CompilerApiMixin(PluginClient) implements
 
   getFileManagerMode () {
     return 'browser'
+  }
+
+  isDesktop() {
+    return false
   }
 }

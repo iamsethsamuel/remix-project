@@ -8,6 +8,11 @@ export interface FuncABI {
     constant?: any
 }
 
+export type OverSizeLimit = {
+    overSizeEip3860: boolean,
+    overSizeEip170: boolean
+}
+
 export interface ContractData {
     name: string,
     contract: any,
@@ -19,7 +24,7 @@ export interface ContractData {
     deployedBytecode: any,
     getConstructorInterface: () => any,
     getConstructorInputs: () => any,
-    isOverSizeLimit: () => boolean,
+    isOverSizeLimit: (args: string) => Promise<OverSizeLimit>,
     metadata: any,
     contractName?: string
 }
@@ -186,7 +191,7 @@ export interface ContractSources {
     }
   }
 
-  export interface NetworkDeploymentFile {
+export interface NetworkDeploymentFile {
         id: string,
         network: string,
         deployments: {
@@ -199,7 +204,7 @@ export interface ContractSources {
         }[]
   }
 
-  export interface SolcBuildFile {
+export interface SolcBuildFile {
     solcInput: SolcInput,
     solcOutput: SolcOutput
   }

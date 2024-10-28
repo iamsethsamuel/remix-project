@@ -53,9 +53,6 @@ test('setup', function (t) {
   })
 });
 
-
-
-
 test('Integration test thisLocal module', function (t: test.Test) {
   t.plan(testFiles.length)
   const module: any = modules.thisLocal
@@ -816,11 +813,11 @@ test('Integration test forLoopIteratesOverDynamicArray module', function (t: tes
 function runModuleOnFiles (Module: any, t: test.Test, cb: ((fname: string, report: AnalysisReportObj[]) => void)): void {
   const statRunner: StatRunner = new StatRunner()
   testFiles.forEach((fileName: string) => {
-  const reports = statRunner.runWithModuleList(compilationResults[fileName], [{ name: new Module().name, mod: new Module() }])
-  const report: AnalysisReportObj[] = reports[0].report
-  if (report.some((x: AnalysisReportObj) => x['warning'].includes('INTERNAL ERROR'))) {
-    t.comment('Error while executing Module: ' + JSON.stringify(report))
-  }
-  cb(fileName, report)
+    const reports = statRunner.runWithModuleList(compilationResults[fileName], [{ name: new Module().name, mod: new Module() }])
+    const report: AnalysisReportObj[] = reports[0].report
+    if (report.some((x: AnalysisReportObj) => x['warning'].includes('INTERNAL ERROR'))) {
+      t.comment('Error while executing Module: ' + JSON.stringify(report))
+    }
+    cb(fileName, report)
   })
 }

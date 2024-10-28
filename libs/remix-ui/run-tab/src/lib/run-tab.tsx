@@ -1,5 +1,7 @@
 // eslint-disable-next-line no-use-before-define
 import React, { Fragment, useEffect, useReducer, useState } from 'react'
+import semver from 'semver'
+import { FormattedMessage } from 'react-intl'
 import { ModalDialog } from '@remix-ui/modal-dialog'
 // eslint-disable-next-line no-unused-vars
 import { Toaster } from '@remix-ui/toaster'
@@ -11,23 +13,42 @@ import { Modal, Network, RunTabProps, Tx } from './types'
 import { ContractData } from '@remix-project/core-plugin'
 import { runTabInitialState, runTabReducer } from './reducers/runTab'
 import {
-  initRunTab, setAccountAddress,
-  setUnitValue, setGasFeeAmount,
+  initRunTab,
+  setAccountAddress,
+  setUnitValue,
+  setGasFeeAmount,
   setExecutionEnvironment,
-  hideToaster, createNewAddress,
-  setPassphraseModal, setMatchPassphraseModal,
-  signMessage, fetchSelectedContract,
-  createNewInstance, setSendValue,
-  setBaseFeePerGas, setConfirmSettings,
-  setGasPrice, setGasPriceStatus,
-  setMaxFee, setMaxPriorityFee,
+  hideToaster,
+  createNewAddress,
+  setPassphraseModal,
+  setMatchPassphraseModal,
+  signMessage,
+  fetchSelectedContract,
+  createNewInstance,
+  setSendValue,
+  setBaseFeePerGas,
+  setConfirmSettings,
+  setGasPrice,
+  setGasPriceStatus,
+  setMaxFee,
+  setMaxPriorityFee,
+  unpinPinnedInstance,
+  pinUnpinnedInstance,
   removeInstances,
-  removeSingleInstance, getExecutionContext,
-  executeTransactions, loadFromAddress,
-  storeNewScenario, runScenario,
-  setScenarioPath, getFuncABIValues,
-  setNetworkName, updateSelectedContract,
-  syncContracts, isValidProxyAddress, isValidProxyUpgrade
+  removeSingleInstance,
+  getExecutionContext,
+  executeTransactions,
+  loadFromAddress,
+  storeNewScenario,
+  runScenario,
+  setScenarioPath,
+  getFuncABIValues,
+  setNetworkName,
+  updateSelectedContract,
+  syncContracts,
+  isValidProxyAddress,
+  isValidProxyUpgrade,
+  addFile
 } from './actions'
 import './css/run-tab.css'
 import { PublishToStorage } from '@remix-ui/publish-to-storage'
@@ -36,7 +57,7 @@ import { MainnetPrompt } from './components/mainnet'
 import { ScenarioPrompt } from './components/scenario'
 import { setIpfsCheckedState, setRemixDActivated } from './actions/payload'
 
-export function RunTabUI (props: RunTabProps) {
+export function RunTabUI(props: RunTabProps) {
   const { plugin } = props
   const [focusModal, setFocusModal] = useState<Modal>({
     hide: true,
@@ -51,24 +72,48 @@ export function RunTabUI (props: RunTabProps) {
   const [focusToaster, setFocusToaster] = useState<string>('')
   const [toasters, setToasters] = useState<string[]>([])
   const [publishData, setPublishData] = useState<{
-    storage: 'ipfs' | 'swarm',
+    storage: 'ipfs' | 'swarm'
     contract: ContractData
   }>({
     storage: null,
     contract: null
   })
-  runTabInitialState.selectExEnv = plugin.blockchain.getProvider()
-  const [runTab, dispatch] = useReducer(runTabReducer, runTabInitialState)
+  const initialState = props.initialState || runTabInitialState
+
+  initialState.selectExEnv = plugin.blockchain.getProvider()
+  const [runTab, dispatch] = useReducer(runTabReducer, initialState)
   const REACT_API = { runTab }
   const currentfile = plugin.config.get('currentFile')
+  const [solcVersion, setSolcVersion] = useState<{version: string, canReceive: boolean}>({ version: '', canReceive: true })
+
+  const getVersion = () => {
+    let version = '0.8.25'
+    try {
+      const regVersion = window.location.href.match(/soljson-v(.*)\+commit/g)
+      if (regVersion && regVersion[1]) version = regVersion[1]
+      if (semver.lt(version, '0.6.0')) {
+        setSolcVersion({ version: version, canReceive: false })
+      } else {
+        setSolcVersion({ version: version, canReceive: true })
+      }
+    } catch (e) {
+      setSolcVersion({ version, canReceive: true })
+      console.log(e)
+    }
+  }
 
   useEffect(() => {
-    initRunTab(plugin)(dispatch)
-    plugin.onInitDone()
+    if (!props.initialState) {
+      initRunTab(plugin, true)(dispatch)
+      plugin.onInitDone()
+    } else {
+      initRunTab(plugin, false)(dispatch)
+    }
   }, [plugin])
 
   useEffect(() => {
     plugin.onReady(runTab)
+    plugin.call('pluginStateLogger', 'logPluginState', 'udapp', runTab)
   }, [REACT_API])
 
   useEffect(() => {
@@ -96,7 +141,14 @@ export function RunTabUI (props: RunTabProps) {
 
   useEffect(() => {
     if (runTab.notification.title) {
-      modal(runTab.notification.title, runTab.notification.message, runTab.notification.labelOk, runTab.notification.actionOk, runTab.notification.labelCancel, runTab.notification.actionCancel)
+      modal(
+        runTab.notification.title,
+        runTab.notification.message,
+        runTab.notification.labelOk,
+        runTab.notification.actionOk,
+        runTab.notification.labelCancel,
+        runTab.notification.actionCancel
+      )
     }
   }, [runTab.notification])
 
@@ -122,15 +174,33 @@ export function RunTabUI (props: RunTabProps) {
     dispatch(setIpfsCheckedState(value))
   }
 
-  const modal = (title: string, message: string | JSX.Element, okLabel: string, okFn: () => void, cancelLabel?: string, cancelFn?: () => void, okBtnClass?: string, cancelBtnClass?: string) => {
-    setModals(modals => {
-      modals.push({ message, title, okLabel, okFn, cancelLabel, cancelFn, okBtnClass, cancelBtnClass })
+  const modal = (
+    title: string,
+    message: string | JSX.Element,
+    okLabel: string,
+    okFn: () => void,
+    cancelLabel?: string,
+    cancelFn?: () => void,
+    okBtnClass?: string,
+    cancelBtnClass?: string
+  ) => {
+    setModals((modals) => {
+      modals.push({
+        message,
+        title,
+        okLabel,
+        okFn,
+        cancelLabel,
+        cancelFn,
+        okBtnClass,
+        cancelBtnClass
+      })
       return [...modals]
     })
   }
 
   const handleHideModal = () => {
-    setFocusModal(modal => {
+    setFocusModal((modal) => {
       return { ...modal, hide: true, message: null }
     })
   }
@@ -141,7 +211,7 @@ export function RunTabUI (props: RunTabProps) {
   }
 
   const toast = (toasterMsg: string) => {
-    setToasters(messages => {
+    setToasters((messages) => {
       messages.push(toasterMsg)
       return [...messages]
     })
@@ -163,7 +233,8 @@ export function RunTabUI (props: RunTabProps) {
 
   const gasEstimationPrompt = (msg: string) => {
     return (
-      <div>Gas estimation errored with the following message (see below). The transaction execution will likely fail. Do you want to force sending? <br />
+      <div>
+        <FormattedMessage id="udapp.gasEstimationPromptText" /> <br />
         {msg}
       </div>
     )
@@ -177,30 +248,40 @@ export function RunTabUI (props: RunTabProps) {
     return <ScenarioPrompt message={message} setScenarioPath={setScenarioPath} defaultValue={defaultValue} />
   }
 
-  const mainnetPrompt = (tx: Tx, network: Network, amount: string, gasEstimation: string, gasFees: (maxFee: string, cb: (txFeeText: string, priceStatus: boolean) => void) => void, determineGasPrice: (cb: (txFeeText: string, gasPriceValue: string, gasPriceStatus: boolean) => void) => void) => {
-    return <MainnetPrompt
-      init={determineGasPrice}
-      network={network}
-      tx={tx}
-      amount={amount}
-      gasEstimation={gasEstimation}
-      setNewGasPrice={gasFees}
-      updateBaseFeePerGas={setBaseFeePerGas}
-      updateConfirmSettings={setConfirmSettings}
-      updateGasPrice={setGasPrice}
-      updateGasPriceStatus={setGasPriceStatus}
-      updateMaxFee={setMaxFee}
-      updateMaxPriorityFee={setMaxPriorityFee}
-      maxFee={runTab.maxFee}
-      maxPriorityFee={runTab.maxPriorityFee}
-    />
+  const mainnetPrompt = (
+    tx: Tx,
+    network: Network,
+    amount: string,
+    gasEstimation: string,
+    gasFees: (maxFee: string, cb: (txFeeText: string, priceStatus: boolean) => void) => void,
+    determineGasPrice: (cb: (txFeeText: string, gasPriceValue: string, gasPriceStatus: boolean) => void) => void
+  ) => {
+    return (
+      <MainnetPrompt
+        init={determineGasPrice}
+        network={network}
+        tx={tx}
+        amount={amount}
+        gasEstimation={gasEstimation}
+        setNewGasPrice={gasFees}
+        updateBaseFeePerGas={setBaseFeePerGas}
+        updateConfirmSettings={setConfirmSettings}
+        updateGasPrice={setGasPrice}
+        updateGasPriceStatus={setGasPriceStatus}
+        updateMaxFee={setMaxFee}
+        updateMaxPriorityFee={setMaxPriorityFee}
+        maxFee={runTab.maxFee}
+        maxPriorityFee={runTab.maxPriorityFee}
+      />
+    )
   }
 
   return (
     <Fragment>
       <div className="udapp_runTabView run-tab" id="runTabView" data-id="runTabView">
-        <div className="list-group list-group-flush">
+        <div className="list-group pb-4 list-group-flush">
           <SettingsUI
+            addFile={addFile}
             networkName={runTab.networkName}
             personalMode={runTab.personalMode}
             selectExEnv={runTab.selectExEnv}
@@ -247,8 +328,12 @@ export function RunTabUI (props: RunTabProps) {
             isValidProxyAddress={isValidProxyAddress}
             isValidProxyUpgrade={isValidProxyUpgrade}
             proxy={runTab.proxy}
+            solCompilerVersion={solcVersion}
+            setCompilerVersion={setSolcVersion}
+            getCompilerVersion={getVersion}
           />
           <RecorderUI
+            plugin={plugin}
             gasEstimationPrompt={gasEstimationPrompt}
             passphrasePrompt={passphrasePrompt}
             mainnetPrompt={mainnetPrompt}
@@ -259,8 +344,11 @@ export function RunTabUI (props: RunTabProps) {
             currentFile={currentfile}
           />
           <InstanceContainerUI
+            plugin={plugin}
             instances={runTab.instances}
             clearInstances={removeInstances}
+            unpinInstance={unpinPinnedInstance}
+            pinInstance={pinUnpinnedInstance}
             removeInstance={removeSingleInstance}
             getContext={getExecutionContext}
             gasEstimationPrompt={gasEstimationPrompt}
@@ -268,13 +356,28 @@ export function RunTabUI (props: RunTabProps) {
             mainnetPrompt={mainnetPrompt}
             runTransactions={executeTransactions}
             sendValue={runTab.sendValue}
+            solcVersion={solcVersion}
+            getVersion={getVersion}
             getFuncABIInputs={getFuncABIValues}
+            exEnvironment={runTab.selectExEnv}
+            editInstance={(instance) => {
+              const { metadata, abi, object } = instance.contractData;
+              plugin.call('quick-dapp', 'edit', {
+                address: instance.address,
+                abi: abi,
+                name: instance.name,
+                network: runTab.networkName,
+                devdoc: object.devdoc,
+                methodIdentifiers: object.evm.methodIdentifiers,
+                solcVersion: JSON.parse(metadata).compiler.version,
+              })
+            }}
           />
         </div>
       </div>
-      <ModalDialog id='udappNotify' { ...focusModal } handleHide={ handleHideModal } />
+      <ModalDialog id="udappNotify" {...focusModal} handleHide={handleHideModal} />
       <Toaster message={focusToaster} handleHide={handleToaster} />
-      <PublishToStorage id='udapp' api={plugin} resetStorage={resetStorage} storage={publishData.storage} contract={publishData.contract} />
+      <PublishToStorage id="udapp" api={plugin} resetStorage={resetStorage} storage={publishData.storage} contract={publishData.contract} />
     </Fragment>
   )
 }

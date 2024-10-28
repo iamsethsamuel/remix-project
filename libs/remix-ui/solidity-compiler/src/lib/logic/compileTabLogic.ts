@@ -1,5 +1,5 @@
 import { ICompilerApi } from '@remix-project/remix-lib'
-import { getValidLanguage, Compiler} from '@remix-project/remix-solidity'
+import { getValidLanguage, Compiler } from '@remix-project/remix-solidity'
 import { EventEmitter } from 'events'
 
 declare global {
@@ -11,7 +11,7 @@ const _paq = window._paq = window._paq || []  //eslint-disable-line
 
 export class CompileTabLogic {
   public compiler
-  public api
+  public api: ICompilerApi
   public contentImport
   public optimize
   public runs
@@ -28,31 +28,31 @@ export class CompileTabLogic {
     this.contentImport = contentImport
     this.event = new EventEmitter()
     this.compiler = new Compiler((url, cb) => api.resolveContentAndSave(url).then((result) => cb(null, result)).catch((error) => cb(error.message)))
-    this.evmVersions = ['default', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']
+    this.evmVersions = ['default', 'cancun', 'shanghai', 'paris', 'london', 'berlin', 'istanbul', 'petersburg', 'constantinople', 'byzantium', 'spuriousDragon', 'tangerineWhistle', 'homestead']
   }
 
   init () {
-    this.optimize = this.api.getCompilerParameters().optimize
-    this.api.setCompilerParameters({ optimize: this.optimize })
+    this.optimize = this.api.getCompilerQueryParameters().optimize
+    this.api.setCompilerQueryParameters({ optimize: this.optimize })
     this.compiler.set('optimize', this.optimize)
 
-    this.runs = this.api.getCompilerParameters().runs
+    this.runs = this.api.getCompilerQueryParameters().runs
     this.runs = this.runs && this.runs !== 'undefined' ? this.runs : 200
-    this.api.setCompilerParameters({ runs: this.runs })
+    this.api.setCompilerQueryParameters({ runs: this.runs })
     this.compiler.set('runs', this.runs)
 
-    this.evmVersion = this.api.getCompilerParameters().evmVersion
+    this.evmVersion = this.api.getCompilerQueryParameters().evmVersion
     if (
-      this.evmVersion === 'undefined' || 
-      this.evmVersion === 'null' || 
-      !this.evmVersion || 
+      this.evmVersion === 'undefined' ||
+      this.evmVersion === 'null' ||
+      !this.evmVersion ||
       !this.evmVersions.includes(this.evmVersion)) {
-        this.evmVersion = null
+      this.evmVersion = null
     }
-    this.api.setCompilerParameters({ evmVersion: this.evmVersion })
+    this.api.setCompilerQueryParameters({ evmVersion: this.evmVersion })
     this.compiler.set('evmVersion', this.evmVersion)
 
-    this.language = getValidLanguage(this.api.getCompilerParameters().language)
+    this.language = getValidLanguage(this.api.getCompilerQueryParameters().language)
     if (this.language != null) {
       this.compiler.set('language', this.language)
     }
@@ -60,7 +60,7 @@ export class CompileTabLogic {
 
   setOptimize (newOptimizeValue: boolean) {
     this.optimize = newOptimizeValue
-    this.api.setCompilerParameters({ optimize: this.optimize })
+    this.api.setCompilerQueryParameters({ optimize: this.optimize })
     this.compiler.set('optimize', this.optimize)
   }
 
@@ -75,13 +75,13 @@ export class CompileTabLogic {
 
   setRuns (runs) {
     this.runs = runs
-    this.api.setCompilerParameters({ runs: this.runs })
+    this.api.setCompilerQueryParameters({ runs: this.runs })
     this.compiler.set('runs', this.runs)
   }
 
   setEvmVersion (newEvmVersion) {
     this.evmVersion = newEvmVersion
-    this.api.setCompilerParameters({ evmVersion: this.evmVersion })
+    this.api.setCompilerQueryParameters({ evmVersion: this.evmVersion })
     this.compiler.set('evmVersion', this.evmVersion)
   }
 
@@ -95,7 +95,7 @@ export class CompileTabLogic {
    */
   setLanguage (lang) {
     this.language = lang
-    this.api.setCompilerParameters({ language: lang })
+    this.api.setCompilerQueryParameters({ language: lang })
     this.compiler.set('language', lang)
   }
 
@@ -104,12 +104,17 @@ export class CompileTabLogic {
    * @param {string} target the path to the file to compile
    */
   compileFile (target) {
-    if (!target) throw new Error('No target provided for compiliation')
+    if (!target) throw new Error('No target provided for compilation')
     return new Promise((resolve, reject) => {
-      this.api.readFile(target).then((content) => {
+      this.api.readFile(target).then(async(content) => {
         const sources = { [target]: { content } }
         this.event.emit('removeAnnotations')
         this.event.emit('startingCompilation')
+        if (await this.api.fileExists('remappings.txt')) {
+          this.api.readFile('remappings.txt').then(remappings => {
+            this.compiler.set('remappings', remappings.split('\n').filter(Boolean))
+          })
+        } else this.compiler.set('remappings', [])
         if (this.configFilePath) {
           this.api.readFile(this.configFilePath).then( contentConfig => {
             this.compiler.set('configFileContent', contentConfig)
@@ -124,26 +129,26 @@ export class CompileTabLogic {
   }
 
   async isHardhatProject () {
-    if (this.api.getFileManagerMode() === 'localhost') {
+    if (this.api.getFileManagerMode() === ('localhost') || this.api.isDesktop()) {
       return await this.api.fileExists('hardhat.config.js') || await this.api.fileExists('hardhat.config.ts')
     } else return false
   }
 
   async isTruffleProject () {
-    if (this.api.getFileManagerMode() === 'localhost') {
+    if (this.api.getFileManagerMode() === ('localhost') || this.api.isDesktop()) {
       return await this.api.fileExists('truffle-config.js')
     } else return false
   }
 
   async isFoundryProject () {
-    if (this.api.getFileManagerMode() === 'localhost') {
+    if (this.api.getFileManagerMode() === ('localhost') || this.api.isDesktop()) {
       return await this.api.fileExists('foundry.toml')
     } else return false
   }
 
   runCompiler (externalCompType) {
     try {
-      if (this.api.getFileManagerMode() === 'localhost') {
+      if (this.api.getFileManagerMode() === 'localhost' || this.api.isDesktop()) {
         if (externalCompType === 'hardhat') {
           const { currentVersion, optimize, runs } = this.compiler.state
           if (currentVersion) {

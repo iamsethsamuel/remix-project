@@ -95,7 +95,7 @@ module.exports = {
       .waitForElementVisible('#stepdetail')
       .waitForElementVisible({
         locateStrategy: 'xpath',
-        selector: '//*[@data-id="treeViewLivm trace step" and contains(.,"531")]',
+        selector: '//*[@data-id="treeViewLivm trace step" and contains(.,"475")]',
       })
       .getEditorValue((content) => {
         browser.assert.ok(content.indexOf(`constructor (string memory name_, string memory symbol_) {
@@ -172,7 +172,7 @@ module.exports = {
         locateStrategy: 'xpath',
         selector: '//*[@data-id="treeViewLivm trace step" and contains(.,"29")]',
       })
-      .goToVMTraceStep(7453)
+      .goToVMTraceStep(5453)
       .waitForElementPresent('*[data-id="treeViewDivtreeViewItemarray"]')
       .click('*[data-id="treeViewDivtreeViewItemarray"]')
       .waitForElementPresent('*[data-id="treeViewDivtreeViewLoadMore"]')
@@ -206,16 +206,40 @@ module.exports = {
   },
   // depends on Should debug using generated sources
   'Should call the debugger api: getTrace #group4': function (browser: NightwatchBrowser) {
+    let txhash
     browser
-      .addFile('test_jsGetTrace.js', { content: jsGetTrace })
+      .clickLaunchIcon('udapp')
+      .perform((done) => {
+        browser.getLastTransactionHash((hash) => {
+          txhash = hash
+          done()
+        })
+      })
+      .perform((done) => {
+        browser.addFile('test_jsGetTrace.js', { content: jsGetTrace.replace('<txhash>', txhash) }).perform(() => {
+          done()
+        })
+      })
       .executeScriptInTerminal('remix.exeCurrent()')
       .pause(3000)
-      .waitForElementContainsText('*[data-id="terminalJournal"]', '{"gas":"0x575f","return":"0x0000000000000000000000000000000000000000000000000000000000000000","structLogs":', 60000)
+      .waitForElementContainsText('*[data-id="terminalJournal"]', '{"gas":"0x5752","return":"0x0000000000000000000000000000000000000000000000000000000000000000","structLogs":', 60000)
   },
   // depends on Should debug using generated sources
   'Should call the debugger api: debug #group4': function (browser: NightwatchBrowser) {
+    let txhash
     browser
-      .addFile('test_jsDebug.js', { content: jsDebug })
+      .clickLaunchIcon('udapp')
+      .perform((done) => {
+        browser.getLastTransactionHash((hash) => {
+          txhash = hash
+          done()
+        })
+      })
+      .perform((done) => {
+        browser.addFile('test_jsDebug.js', { content: jsDebug.replace('<txhash>', txhash) }).perform(() => {
+          done()
+        })
+      })      
       .executeScriptInTerminal('remix.exeCurrent()')
       .pause(3000)
       .clickLaunchIcon('debugger')
@@ -261,7 +285,7 @@ module.exports = {
       .goToVMTraceStep(79)
       .waitForElementVisible('*[data-id="debugGoToRevert"]', 60000)
       .click('*[data-id="debugGoToRevert"]')
-      .waitForElementContainsText('*[data-id="asmitems"] div[selected="selected"]', '117 REVERT')
+      .waitForElementContainsText('*[data-id="asmitems"] div[selected="selected"]', '114 REVERT')
   }
 }
 
@@ -495,7 +519,7 @@ const localVariable_step717_ABIEncoder = { // eslint-disable-line
 
 const jsGetTrace = `(async () => {
   try {
-      const result = await remix.call('debugger', 'getTrace', '0x65f0813753462414f9a91f0aabea946188327995f54b893b63a8d7ff186cfca3')
+      const result = await remix.call('debugger', 'getTrace', '<txhash>')
       console.log('result ', result)
   } catch (e) {
       console.log(e.message)
@@ -504,7 +528,7 @@ const jsGetTrace = `(async () => {
 
 const jsDebug = `(async () => {
   try {
-      const result = await remix.call('debugger', 'debug', '0x65f0813753462414f9a91f0aabea946188327995f54b893b63a8d7ff186cfca3')
+      const result = await remix.call('debugger', 'debug', '<txhash>')
       console.log('result ', result)
   } catch (e) {
       console.log(e.message)

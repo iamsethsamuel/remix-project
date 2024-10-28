@@ -1,7 +1,7 @@
 import React from 'react';
 import { compile, helper } from '@remix-project/remix-solidity'
 import { CompileTabLogic, parseContracts } from '@remix-ui/solidity-compiler' // eslint-disable-line
-import type { ConfigurationSettings } from '@remix-project/remix-lib'
+import type { ConfigurationSettings, iSolJsonBinData } from '@remix-project/remix-lib'
 
 export const CompilerApiMixin = (Base) => class extends Base {
   currentFile: string
@@ -16,6 +16,7 @@ export const CompilerApiMixin = (Base) => class extends Base {
   compileErrors: any
   compileTabLogic: CompileTabLogic
   configurationSettings: ConfigurationSettings
+  solJsonBinData: iSolJsonBinData
 
   onCurrentFileChanged: (fileName: string) => void
   // onResetResults: () => void
@@ -27,6 +28,8 @@ export const CompilerApiMixin = (Base) => class extends Base {
   onContentChanged: () => void
   onFileClosed: (name: string) => void
   statusChanged: (data: { key: string, title?: string, type?: string }) => void
+
+  setSolJsonBinData: (urls: iSolJsonBinData) => void
 
   initCompilerApi () {
     this.configurationSettings = null
@@ -200,14 +203,17 @@ export const CompilerApiMixin = (Base) => class extends Base {
     return this.call('fileManager', 'saveCurrentFile')
   }
 
-  resetResults () {
-    this.currentFile = ''
-    this.compilationDetails = {
-      contractsDetails: {},
-      contractMap: {}
+  resetResults() {
+    try {
+      this.currentFile = ''
+      this.compilationDetails = {
+        contractsDetails: {},
+        contractMap: {}
+      }
+      this.statusChanged({ key: 'none' })
+    } catch (e) {
+      // do nothing
     }
-    this.statusChanged({ key: 'none' })
-    // if (this.onResetResults) this.onResetResults()
   }
 
   listenToEvents () {
@@ -278,6 +284,15 @@ export const CompilerApiMixin = (Base) => class extends Base {
 
     this.on('fileManager', 'fileClosed', this.data.eventHandlers.onFileClosed)
 
+    this.on('compilerloader', 'jsonBinDataLoaded', (urls: iSolJsonBinData) => {
+      try {
+        this.setSolJsonBinData(urls)
+      } catch (e){
+      }
+      this.solJsonBinData = urls
+    })
+    this.call('compilerloader', 'getJsonBinData')
+
     this.data.eventHandlers.onCompilationFinished = async (success, data, source, input, version) => {
       this.compileErrors = data
       if (success) {
@@ -323,7 +338,7 @@ export const CompilerApiMixin = (Base) => class extends Base {
             await this.call('editor', 'addAnnotation', pos, file)
           }
         }
-      }     
+      }
     }
     this.compiler.event.register('compilationFinished', this.data.eventHandlers.onCompilationFinished)
 
@@ -342,9 +357,13 @@ export const CompilerApiMixin = (Base) => class extends Base {
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.keyCode === 83 && this.currentFile !== '') {
         e.preventDefault()
         if (this.currentFile && (this.currentFile.endsWith('.sol') || this.currentFile.endsWith('.yul'))) {
-          if(await this.getAppParameter('hardhat-compilation')) this.compileTabLogic.runCompiler('hardhat')
-          else if(await this.getAppParameter('truffle-compilation')) this.compileTabLogic.runCompiler('truffle')
+          if (await this.getAppParameter('hardhat-compilation')) this.compileTabLogic.runCompiler('hardhat')
+          else if (await this.getAppParameter('truffle-compilation')) this.compileTabLogic.runCompiler('truffle')
           else this.compileTabLogic.runCompiler(undefined)
+        } else if (this.currentFile && this.currentFile.endsWith('.circom')) {
+          await this.call('circuit-compiler', 'compile', this.currentFile)
+        } else if (this.currentFile && this.currentFile.endsWith('.vy')) {
+          await this.call('vyper', 'vyperCompileCustomAction', this.currentFile)
         }
       }
     }
@@ -355,7 +374,7 @@ export const CompilerApiMixin = (Base) => class extends Base {
     return new Promise((resolve) => {
       if (!data.contracts || (data.contracts && Object.keys(data.contracts).length === 0)) {
         return resolve({
-          contractMap: {}, 
+          contractMap: {},
           contractsDetails: {},
           target: source.target
         })
@@ -371,7 +390,7 @@ export const CompilerApiMixin = (Base) => class extends Base {
         )
       })
       return resolve({
-        contractMap, 
+        contractMap,
         contractsDetails,
         target: source.target
       })

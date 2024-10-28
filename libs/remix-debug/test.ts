@@ -1,4 +1,4 @@
-// TODO: this file shoudl be removed at some point
+// TODO: this file should be removed at some point
 const CmdLine = require('./src/cmdline/index')
 // var compilation = require('./compilation.json')
 
@@ -10,8 +10,7 @@ const shortFilename = 'simple_storage.sol'
 
 const inputJson = {
   language: 'Solidity',
-  sources: {
-  },
+  sources: {},
   settings: {
     optimizer: {
       enabled: true,
@@ -19,14 +18,16 @@ const inputJson = {
     },
     outputSelection: {
       '*': {
-        '': [ 'ast' ],
-        '*': [ 'abi', 'metadata', 'devdoc', 'userdoc', 'evm.legacyAssembly', 'evm.bytecode', 'evm.deployedBytecode', 'evm.methodIdentifiers', 'evm.gasEstimates' ]
+        '': ['ast'],
+        '*': ['abi', 'metadata', 'devdoc', 'userdoc', 'evm.legacyAssembly', 'evm.bytecode', 'evm.deployedBytecode', 'evm.methodIdentifiers', 'evm.gasEstimates']
       }
     }
   }
 }
 
-inputJson.sources[shortFilename] = {content: fs.readFileSync(filename).toString()}
+inputJson.sources[shortFilename] = {
+  content: fs.readFileSync(filename).toString()
+}
 
 console.dir(inputJson)
 
@@ -67,7 +68,7 @@ cmdLine.startDebug(tx, shortFilename)
 cmdLine.events.on('source', () => {
   cmdLine.getSource().forEach(console.dir)
 })
- // })
+// })
 // })
 
 const repl = require('repl')
@@ -106,4 +107,3 @@ repl.start({
 })
 
 module.exports = cmdLine
-

@@ -1,6 +1,8 @@
 'use strict'
+import { bytesToHex } from '@ethereumjs/util'
 import { Common } from '@ethereumjs/common'
-import { getOpcodesForHF, OpcodeList } from '@ethereumjs/evm/dist/opcodes/codes'
+// TODO fix the import when getOpcodesForHF is exported
+import { getOpcodesForHF } from '@ethereumjs/evm'
 import getOpcodes from './opcodes'
 
 export function nameOpCodes (raw, hardfork) {
@@ -27,7 +29,9 @@ export function nameOpCodes (raw, hardfork) {
       i += jumpNum
     }
 
-    const data = (pushData as any).toString('hex') !== '' ? ' ' + (pushData as any).toString('hex') : ''
+    const hexCode = bytesToHex((pushData as any))
+    // @ts-ignore
+    const data = hexCode !== '' ? ' ' + hexCode : ''
 
     code.push(pad(pc, roundLog(raw.length, 10)) + ' ' + curOpCode + data)
     pushData = ''
@@ -46,7 +50,7 @@ type Opcode = {
  * information about the opcode.
  */
 export function parseCode (raw) {
-  const common = new Common({ chain: 'mainnet', hardfork: 'merge' })
+  const common = new Common({ chain: 'mainnet', hardfork: 'cancun' })
   const opcodes = getOpcodesForHF(common).opcodes
 
   const code = []

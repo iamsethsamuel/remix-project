@@ -11,6 +11,7 @@
 * Licensed under MIT (https://github.com/twbs/bootstrap/blob/main/LICENSE)
 */@import url(https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,700;1,400;1,700&display=swap);
 :root {
+    --ai: #da2de4;
     --blue:#446e9b;
     --indigo:#6610f2;
     --purple:#6f42c1;
@@ -68,6 +69,19 @@ body {
     text-align:left;
     background-color:#fff
 }
+
+*::-webkit-scrollbar {
+  width:  8px;
+  height: 6px;
+  background-color: var(--body-bg);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--secondary);
+  opacity: 0.3;
+  border-radius: 30px;
+}
+
 [tabindex="-1"]:focus:not(:focus-visible) {
     outline:0!important
 }
@@ -2121,6 +2135,7 @@ textarea.form-control {
 
 }
 .btn {
+    cursor: pointer;
     display:inline-block;
     font-weight:400;
     color:#777;
@@ -2153,7 +2168,8 @@ textarea.form-control {
     box-shadow:0 0 0 .2rem rgba(68,110,155,.25)
 }
 .btn.disabled,.btn:disabled {
-    opacity:.65
+    opacity:.65;
+    cursor: not-allowed
 }
 .btn:not(:disabled):not(.disabled) {
     cursor:pointer
@@ -2836,9 +2852,9 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
     border:0
 }
 .dropdown-item:focus,.dropdown-item:hover {
-    color:#202020;
-    text-decoration:none;
-    background-color:#f8f9fa
+    color: var(--text);
+    text-decoration: none;
+    background-color: var(--secondary);
 }
 .dropdown-item.active,.dropdown-item:active {
     color:#fff;
@@ -3931,7 +3947,8 @@ input[type=button].btn-block,input[type=reset].btn-block,input[type=submit].btn-
     padding:1.25rem
 }
 .card-title {
-    margin-bottom:.75rem
+    margin-bottom:.75rem;
+    color: var(--text);
 }
 .card-subtitle {
     margin-top:-.375rem;
@@ -5031,7 +5048,8 @@ a.close.disabled {
 }
 .modal-header .close {
     padding:1rem 1rem;
-    margin:-1rem -1rem -1rem auto
+    margin:-1rem -1rem -1rem auto;
+    cursor: pointer;
 }
 .modal-title {
     margin-bottom:0;
@@ -5642,6 +5660,9 @@ a.bg-dark:focus,a.bg-dark:hover,button.bg-dark:focus,button.bg-dark:hover {
 .bg-transparent {
     background-color:transparent!important
 }
+.border-no-shift {
+    box-shadow: inset 0 0 0 1px #dee2e6;
+  }
 .border {
     border:1px solid #dee2e6!important
 }
@@ -8368,6 +8389,9 @@ a.text-danger:focus,a.text-danger:hover {
 }
 a.text-light:focus,a.text-light:hover {
     color:#c8c8c8!important
+}
+.text-ai {
+  color: #da2de4 !important;
 }
 .text-dark {
     color:#333!important

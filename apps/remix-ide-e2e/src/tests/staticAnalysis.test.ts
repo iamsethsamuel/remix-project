@@ -11,7 +11,7 @@ contract test1 { address test = tx.origin; }
 contract test2 {}
 contract TooMuchGas {
   uint x;
-  fallback() external { 
+  fallback() external {
       x++;
     uint test;
     uint test1;
@@ -33,24 +33,34 @@ module.exports = {
   },
   'run analysis and filter results': function (browser: NightwatchBrowser) {
     browser
-    .clickLaunchIcon('filePanel')
-    .click('*[data-id="treeViewLitreeViewItemcontracts"]')
-    .click('*[data-id="treeViewLitreeViewItemcontracts/2_Owner.sol"]')
-    .clickLaunchIcon('solidity')
-    .pause(10000)
-    .clickLaunchIcon('solidityStaticAnalysis')
-    .waitForElementPresent('#staticanalysisresult .warning', 5000)
-    .assert.containsText('#verticalIconsKindsolidityStaticAnalysis .remixui_status', '1') // Check warning count
-    .verify.elementPresent('input[name="showLibWarnings"]')
-    .verify.not.elementPresent('input[name="showLibWarnings"]:checked')
-    .verify.elementPresent('label[id="headingshowLibWarnings"]')
-    .click('label[id="headingshowLibWarnings"]')
-    .pause(1000)
-    .assert.containsText('#verticalIconsKindsolidityStaticAnalysis .remixui_status', '382')
-    .click('label[id="headingshowLibWarnings"]')
-    .pause(1000)
-    .assert.containsText('#verticalIconsKindsolidityStaticAnalysis .remixui_status', '1')
-    .end()
+      .clickLaunchIcon('filePanel')
+      .click('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .click('*[data-id="treeViewLitreeViewItemcontracts/2_Owner.sol"]')
+      .clickLaunchIcon('solidity')
+      .click('*[id="compileBtn"]')
+      .pause(10000)
+      .clickLaunchIcon('solidityStaticAnalysis')
+      .useXpath()
+      .click('//*[@id="staticAnalysisRunBtn"]')
+      // .waitForElementPresent('div#staticanalysisresult .warning', 5000)
+      .waitForElementPresent('//*[@id="staticanalysisresult"]', 5000)
+      .useCss()
+      // Check warning count
+      .waitForElementVisible('span#ssaRemixtab')
+      .click('span#ssaRemixtab')
+      .assert.containsText('span#ssaRemixtab > *[data-id="RemixStaticAnalysisErrorCount"]', '3')
+      .verify.elementPresent('input[name="showLibWarnings"]')
+      .verify.not.elementPresent('input[name="showLibWarnings"]:checked')
+      .verify.elementPresent('label[id="headingshowLibWarnings"]')
+      .click('label[id="headingshowLibWarnings"]')
+      .pause(1000)
+      .waitForElementVisible('span#ssaRemixtab')
+      .click('span#ssaRemixtab')
+      .assert.containsText('span#ssaRemixtab > *[data-id="RemixStaticAnalysisErrorCount', '388')
+      .click('label[id="headingshowLibWarnings"]')
+      .pause(1000)
+      .assert.containsText('span#ssaRemixtab > *[data-id="RemixStaticAnalysisErrorCount', '3')
+      .end()
   }
 }
 
@@ -67,8 +77,8 @@ function runTests (browser: NightwatchBrowser) {
         'Fallback function of contract TooMuchGas requires too much gas',
         'TooMuchGas.() : Variables have very similar names "test" and "test1".',
         'TooMuchGas.() : Variables have very similar names "test" and "test1".'],
-      '#staticanalysisresult .warning',
-      browser
+        '#staticanalysisresult .warning',
+        browser
       )
     })
 }

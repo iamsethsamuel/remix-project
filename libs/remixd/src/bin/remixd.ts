@@ -77,7 +77,7 @@ function errorHandler (error: any, service: string) {
   const options = program.opts();
   await warnLatestVersion()
 
-  if(options.install && !options.readOnly) {
+  if (options.install && !options.readOnly) {
     if (options.install.toLowerCase() === 'slither') require('./../scripts/installSlither')
     process.exit(0)
   }
@@ -128,7 +128,7 @@ function errorHandler (error: any, service: string) {
       }
       // Run hardhat service if a hardhat project is shared as folder
       const hardhatConfigFilePath = absolutePath('./', options.sharedFolder)
-      const isHardhatProject = existsSync(hardhatConfigFilePath  + '/hardhat.config.js') || existsSync(hardhatConfigFilePath  + '/hardhat.config.ts')
+      const isHardhatProject = existsSync(hardhatConfigFilePath + '/hardhat.config.js') || existsSync(hardhatConfigFilePath + '/hardhat.config.ts')
       if (isHardhatProject) {
         startService('hardhat', (ws: WS, sharedFolderClient: servicesList.Sharedfolder, error: Error) => {
           if (error) {
@@ -139,9 +139,9 @@ function errorHandler (error: any, service: string) {
           sharedFolderClient.sharedFolder(options.sharedFolder)
         })
       }
-      // Run foundry service if a founndry project is shared as folder
+      // Run foundry service if a foundry project is shared as folder
       const foundryConfigFilePath = absolutePath('./', options.sharedFolder)
-      const isFoundryProject = existsSync(foundryConfigFilePath  + '/foundry.toml')
+      const isFoundryProject = existsSync(foundryConfigFilePath + '/foundry.toml')
       if (isFoundryProject) {
         startService('foundry', (ws: WS, sharedFolderClient: servicesList.Sharedfolder, error: Error) => {
           if (error) {

@@ -2,50 +2,89 @@ const domains = {
   'remix-alpha.ethereum.org': 27,
   'remix-beta.ethereum.org': 25,
   'remix.ethereum.org': 23,
-  '6fd22d6fe5549ad4c4d8fd3ca0b7816b.mod': 35 // remix desktop
+  'localhost': 35 // remix desktop
 }
 
-if (domains[window.location.hostname]) {
+let domainToTrack = domains[window.location.hostname]
+
+
+function trackDomain(domainToTrack) {
   var _paq = window._paq = window._paq || []
+
   /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
-  _paq.push(['disableCookies']);
+  _paq.push(["setExcludedQueryParams", ["code", "gist"]]);
+  _paq.push(["setExcludedReferrers", ["etherscan.io"]]);
   _paq.push(['enableJSErrorTracking']);
   _paq.push(['trackPageView']);
   _paq.push(['enableLinkTracking']);
   _paq.push(['enableHeartBeatTimer']);
-  if (!window.localStorage.getItem('config-v0.8:.remix.config') ||
-    (window.localStorage.getItem('config-v0.8:.remix.config') && !window.localStorage.getItem('config-v0.8:.remix.config').includes('settings/matomo-analytics'))) {
-    _paq.push(['optUserOut'])
-  }
-  (function () {
-    var u = "https://matomo.ethereum.org/";
-    _paq.push(['setTrackerUrl', u + 'matomo.php'])
-    _paq.push(['setSiteId', domains[window.location.hostname]])
-    // Send all of the Remix live tracking data to the secondary Matomo server
-    if (window.location.hostname === 'remix.ethereum.org') {
-      var secondaryTracker = 'https://remix-ethereum.matomo.cloud/matomo.php';
-      var secondaryWebsiteId = 1;
-      _paq.push(['addTracker', secondaryTracker, secondaryWebsiteId]);
+  const remixConfig = window.localStorage.getItem('config-v0.8:.remix.config');
+  if (!remixConfig || (remixConfig && !remixConfig.includes('settings/matomo-analytics'))) {
+    // require user tracking consent before processing data
+    _paq.push(['requireConsent']);
+  } else {
+    try {
+      const config = JSON.parse(remixConfig);
+      if (config['settings/matomo-analytics'] === true) {
+        // user has given consent to process their data
+        _paq.push(['setConsentGiven']);
+      } else {
+        // user has not given consent to process their data
+        _paq.push(['requireConsent']);
+      }
+    } catch (e) {
+      console.error('Error parsing remix config:', e);
+      _paq.push(['requireConsent']);
     }
-    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0]
-    g.type = 'text/javascript'; g.async = true; g.src = u + 'matomo.js'; s.parentNode.insertBefore(g, s)
-  })()
+  }
+  _paq.push(['trackEvent', 'loader', 'load']);
+  (function () {
+    var u = "https://ethereumfoundation.matomo.cloud/";
+    _paq.push(['setTrackerUrl', u + 'matomo.php?debug=1']);
+    _paq.push(['setSiteId', domainToTrack]);
+    var d = document, g = d.createElement('script'), s = d.getElementsByTagName('script')[0];
+    g.async = true; g.src = 'https://cdn.matomo.cloud/ethereumfoundation.matomo.cloud/matomo.js'; s.parentNode.insertBefore(g, s);
+  })();
 }
 
+if (window.electronAPI) {
+  window.electronAPI.canTrackMatomo().then((canTrack) => {
+    if (!canTrack) {
+      console.log('Matomo tracking is disabled on Dev mode')
+      return
+    }
+    window._paq = {
+      push: function (...data) {
+        if (!window.localStorage.getItem('config-v0.8:.remix.config') ||
+          (window.localStorage.getItem('config-v0.8:.remix.config') && !window.localStorage.getItem('config-v0.8:.remix.config').includes('settings/matomo-analytics'))) {
+            // require user tracking consent before processing data
+        } else {
+          if (JSON.parse(window.localStorage.getItem('config-v0.8:.remix.config'))['settings/matomo-analytics']) {
+            window.electronAPI.trackEvent(...data)
+          }
+        }
+      }
+    }
+  })
+} else {
+  if (domainToTrack) {
+    trackDomain(domainToTrack)
+  }
+}
 function isElectron() {
   // Renderer process
   if (typeof window !== 'undefined' && typeof window.process === 'object' && window.process.type === 'renderer') {
-      return true
+    return true
   }
 
   // Main process
   if (typeof process !== 'undefined' && typeof process.versions === 'object' && !!process.versions.electron) {
-      return true
+    return true
   }
 
   // Detect the user agent when the `nodeIntegration` option is set to false
   if (typeof navigator === 'object' && typeof navigator.userAgent === 'string' && navigator.userAgent.indexOf('Electron') >= 0) {
-      return true
+    return true
   }
 
   return false

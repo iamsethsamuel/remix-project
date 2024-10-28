@@ -1,5 +1,6 @@
 // eslint-disable-next-line no-use-before-define
 import React, { useEffect, useState } from 'react'
+import { FormattedMessage, useIntl } from 'react-intl'
 import { UdappProps } from '../types'
 import { FuncABI } from '@remix-project/core-plugin'
 import { CopyToClipboard } from '@remix-ui/clipboard'
@@ -9,10 +10,12 @@ import { ContractGUI } from './contractGUI'
 import { TreeView, TreeViewItem } from '@remix-ui/tree-view'
 import { BN } from 'bn.js'
 import { CustomTooltip, is0XPrefixed, isHexadecimal, isNumeric, shortenAddress } from '@remix-ui/helper'
+const _paq = (window._paq = window._paq || [])
 
 const txHelper = remixLib.execution.txHelper
 
-export function UniversalDappUI (props: UdappProps) {
+export function UniversalDappUI(props: UdappProps) {
+  const intl = useIntl()
   const [toggleExpander, setToggleExpander] = useState<boolean>(true)
   const [contractABI, setContractABI] = useState<FuncABI[]>(null)
   const [address, setAddress] = useState<string>('')
@@ -30,12 +33,11 @@ export function UniversalDappUI (props: UdappProps) {
     } else {
       setContractABI(props.instance.abi)
     }
-  }, [props.instance.abi])
-
-  useEffect(() => {
     if (props.instance.address) {
-      // @ts-ignore
-      let address = (props.instance.address.slice(0, 2) === '0x' ? '' : '0x') + props.instance.address.toString('hex')
+      let address =
+        (props.instance.address.slice(0, 2) === '0x' ? '' : '0x') +
+        // @ts-ignore
+        props.instance.address.toString('hex')
 
       address = ethJSUtil.toChecksumAddress(address)
       setAddress(address)
@@ -69,30 +71,30 @@ export function UniversalDappUI (props: UdappProps) {
     if (amount !== '0') {
       // check for numeric and receive/fallback
       if (!isNumeric(amount)) {
-        return setLlIError('Value to send should be a number')
+        return setLlIError(intl.formatMessage({ id: 'udapp.llIError1' }))
       } else if (!receive && !(fallback && fallback.stateMutability === 'payable')) {
-        return setLlIError("In order to receive Ether transfer the contract should have either 'receive' or payable 'fallback' function")
+        return setLlIError(intl.formatMessage({ id: 'udapp.llIError2' }))
       }
     }
     let calldata = calldataValue
 
     if (calldata) {
       if (calldata.length < 4 && is0XPrefixed(calldata)) {
-        return setLlIError('The calldata should be a valid hexadecimal value with size of at least one byte.')
+        return setLlIError(intl.formatMessage({ id: 'udapp.llIError3' }))
       } else {
         if (is0XPrefixed(calldata)) {
           calldata = calldata.substr(2, calldata.length)
         }
         if (!isHexadecimal(calldata)) {
-          return setLlIError('The calldata should be a valid hexadecimal value.')
+          return setLlIError(intl.formatMessage({ id: 'udapp.llIError4' }))
         }
       }
       if (!fallback) {
-        return setLlIError("'Fallback' function is not defined")
+        return setLlIError(intl.formatMessage({ id: 'udapp.llIError5' }))
       }
     }
 
-    if (!receive && !fallback) return setLlIError('Both \'receive\' and \'fallback\' functions are not defined')
+    if (!receive && !fallback) return setLlIError(intl.formatMessage({ id: 'udapp.llIError6' }))
 
     // we have to put the right function ABI:
     // if receive is defined and that there is no calldata => receive function is called
@@ -100,7 +102,7 @@ export function UniversalDappUI (props: UdappProps) {
     if (receive && !calldata) args.funcABI = receive
     else if (fallback) args.funcABI = fallback
 
-    if (!args.funcABI) return setLlIError('Please define a \'Fallback\' function to send calldata and a either \'Receive\' or payable \'Fallback\' to send ethers')
+    if (!args.funcABI) return setLlIError(intl.formatMessage({ id: 'udapp.llIError7' }))
     runTransaction(false, args.funcABI, null, calldataValue)
   }
 
@@ -108,11 +110,40 @@ export function UniversalDappUI (props: UdappProps) {
     setToggleExpander(!toggleExpander)
   }
 
-  const remove = () => {
+  const unsavePinnedContract = async () => {
+    await props.plugin.call('fileManager', 'remove', `.deploys/pinned-contracts/${props.plugin.REACT_API.chainId}/${props.instance.address}.json`)
+  }
+
+  const remove = async() => {
+    if (props.instance.isPinned) {
+      await unsavePinnedContract()
+      _paq.push(['trackEvent', 'udapp', 'pinContracts', 'removePinned'])
+    }
     props.removeInstance(props.index)
   }
 
+  const unpinContract = async() => {
+    await unsavePinnedContract()
+    _paq.push(['trackEvent', 'udapp', 'pinContracts', 'unpinned'])
+    props.unpinInstance(props.index)
+  }
+
+  const pinContract = async() => {
+    const workspace = await props.plugin.call('filePanel', 'getCurrentWorkspace')
+    const objToSave = {
+      name: props.instance.name,
+      address: props.instance.address,
+      abi: props.instance.abi || props.instance.contractData.abi,
+      filePath: props.instance.filePath || `${workspace.name}/${props.instance.contractData.contract.file}`,
+      pinnedAt: Date.now()
+    }
+    await props.plugin.call('fileManager', 'writeFile', `.deploys/pinned-contracts/${props.plugin.REACT_API.chainId}/${props.instance.address}.json`, JSON.stringify(objToSave, null, 2))
+    _paq.push(['trackEvent', 'udapp', 'pinContracts', `pinned at ${props.plugin.REACT_API.chainId}`])
+    props.pinInstance(props.index, objToSave.pinnedAt, objToSave.filePath)
+  }
+
   const runTransaction = (lookupOnly, funcABI: FuncABI, valArr, inputsValues, funcIndex?: number) => {
+    if (props.instance.isPinned) _paq.push(['trackEvent', 'udapp', 'pinContracts', 'interactWithPinned'])
     const functionName = funcABI.type === 'function' ? funcABI.name : `(${funcABI.type})`
     const logMsg = `${lookupOnly ? 'call' : 'transact'} to ${props.instance.name}.${functionName}`
 
@@ -129,7 +160,8 @@ export function UniversalDappUI (props: UdappProps) {
       props.mainnetPrompt,
       props.gasEstimationPrompt,
       props.passphrasePrompt,
-      funcIndex)
+      funcIndex
+    )
   }
 
   const extractDataDefault = (item, parent?) => {
@@ -165,7 +197,7 @@ export function UniversalDappUI (props: UdappProps) {
 
   const handleExpand = (path: string) => {
     if (expandPath.includes(path)) {
-      const filteredPath = expandPath.filter(value => value !== path)
+      const filteredPath = expandPath.filter((value) => value !== path)
 
       setExpandPath(filteredPath)
     } else {
@@ -191,9 +223,7 @@ export function UniversalDappUI (props: UdappProps) {
   const renderData = (item, parent, key: string | number, keyPath: string) => {
     const data = extractDataDefault(item, parent)
     const children = (data.children || []).map((child, index) => {
-      return (
-        renderData(child.value, data, child.key, keyPath + '/' + child.key)
-      )
+      return renderData(child.value, data, child.key, keyPath + '/' + child.key)
     })
 
     if (children && children.length > 0) {
@@ -211,137 +241,140 @@ export function UniversalDappUI (props: UdappProps) {
 
   return (
     <div
-      className={`instance udapp_instance udapp_run-instance border-dark ${
-        toggleExpander ? "udapp_hidesub" : "bg-light"
-      }`}
+      className={`instance udapp_instance udapp_run-instance border-dark ${toggleExpander ? 'udapp_hidesub' : 'bg-light'}`}
       id={`instance${address}`}
       data-shared="universalDappUiInstance"
+      data-id={props.instance.isPinned ? `pinnedInstance${address}` : `unpinnedInstance${address}`}
     >
       <div className="udapp_title pb-0 alert alert-secondary">
-        <span
-          data-id={`universalDappUiTitleExpander${props.index}`}
-          className="btn udapp_titleExpander"
-          onClick={toggleClass}
-        >
-          <i
-            className={`fas ${
-              toggleExpander ? "fa-angle-right" : "fa-angle-down"
-            }`}
-            aria-hidden="true"
-          ></i>
+        <span data-id={`universalDappUiTitleExpander${props.index}`} className="btn udapp_titleExpander" onClick={toggleClass} style={{ padding: "0.45rem" }}>
+          <i className={`fas ${toggleExpander ? 'fa-angle-right' : 'fa-angle-down'}`} aria-hidden="true"></i>
         </span>
         <div className="input-group udapp_nameNbuts">
           <div className="udapp_titleText input-group-prepend">
-            <span className="input-group-text udapp_spanTitleText">
-              {props.instance.name} at {shortenAddress(address)} (
-              {props.context})
-            </span>
+            { props.instance.isPinned ? ( <CustomTooltip placement="top" tooltipClasses="text-nowrap" tooltipId="udapp_udappUnpinTooltip" tooltipText={props.instance.isPinned ? `Pinned for network: ${props.plugin.REACT_API.chainId}, at:  ${new Date(props.instance.pinnedAt).toLocaleString()}` : '' }>
+              <span className="input-group-text udapp_spanTitleText">
+                {props.instance.name} at {shortenAddress(address)}
+              </span>
+            </CustomTooltip>) : ( <span className="input-group-text udapp_spanTitleText">
+              {props.instance.name} at {shortenAddress(address)} ({props.context})
+            </span>) }
           </div>
-          <div className="btn">
-            <CopyToClipboard content={address} direction={"top"} />
+          <div className="btn" style={{ padding: '0.15rem' }}>
+            <CopyToClipboard tip={intl.formatMessage({ id: 'udapp.copyAddress' })} content={address} direction={'top'} />
           </div>
+          { props.instance.isPinned ? ( <div className="btn" style={{ padding: '0.15rem', marginLeft: '-0.5rem' }}>
+            <CustomTooltip placement="top" tooltipClasses="text-nowrap" tooltipId="udapp_udappUnpinTooltip" tooltipText={<FormattedMessage id="udapp.tooltipTextUnpin" />}>
+              <i className="fas fa-thumbtack p-2" aria-hidden="true" data-id="universalDappUiUdappUnpin" onClick={unpinContract}></i>
+            </CustomTooltip>
+          </div> ) : ( <div className="btn" style={{ padding: '0.15rem', marginLeft: '-0.5rem' }}>
+            <CustomTooltip placement="top" tooltipClasses="text-nowrap" tooltipId="udapp_udappPinTooltip" tooltipText={<FormattedMessage id="udapp.tooltipTextPin" />}>
+              <i className="far fa-thumbtack p-2" aria-hidden="true" data-id="universalDappUiUdappPin" onClick={pinContract}></i>
+            </CustomTooltip>
+          </div> )
+          }
         </div>
-        <CustomTooltip
-          placement="right"
-          tooltipClasses="text-nowrap"
-          tooltipId="udapp_udappCloseTooltip"
-          tooltipText="Remove from the list"
-        >
-          <i
-            className="udapp_closeIcon m-1 fas fa-times align-self-center"
-            aria-hidden="true"
-            data-id="universalDappUiUdappClose"
-            onClick={remove}
-          ></i>
-        </CustomTooltip>
+        <div className="btn" style={{ padding: '0.15rem', marginLeft: '-0.5rem' }}>
+          <CustomTooltip placement="top" tooltipClasses="text-nowrap" tooltipId="udapp_udappCloseTooltip" tooltipText={<FormattedMessage id="udapp.tooltipTextRemove" />}>
+            <i className="fas fa-times p-2" aria-hidden="true" data-id="universalDappUiUdappClose" onClick={remove}></i>
+          </CustomTooltip>
+        </div>
       </div>
-      <div
-        className="udapp_cActionsWrapper"
-        data-id="universalDappUiContractActionWrapper"
-      >
+      <div className="udapp_cActionsWrapper" data-id="universalDappUiContractActionWrapper">
         <div className="udapp_contractActionsContainer">
-          <div className="d-flex" data-id="instanceContractBal">
-            <label>Balance: {instanceBalance} ETH</label>
+          <div className="d-flex flex-row justify-content-between align-items-center pb-2" data-id="instanceContractBal">
+            <span className="remixui_runtabBalancelabel run-tab">
+              <b><FormattedMessage id="udapp.balance" />:</b> {instanceBalance} ETH
+            </span>
+            <div></div>
+            <div className="d-flex align-self-center">
+              {props.exEnvironment && props.exEnvironment.startsWith('injected') && (
+                <CustomTooltip placement="top" tooltipClasses="text-nowrap" tooltipId="udapp_udappEditTooltip" tooltipText={<FormattedMessage id="udapp.tooltipTextEdit" />}>
+                  <i
+                    data-id="instanceEditIcon"
+                    className="fas fa-edit pr-3"
+                    onClick={() => {
+                      props.editInstance(props.instance)
+                    }}
+                  ></i>
+                </CustomTooltip>
+              )}
+            </div>
           </div>
+          { props.instance.isPinned && props.instance.pinnedAt ? (
+            <div className="d-flex" data-id="instanceContractPinnedAt">
+              <label>
+                <b><FormattedMessage id="udapp.pinnedAt" />:</b> {(new Date(props.instance.pinnedAt)).toLocaleString()}
+              </label>
+            </div>
+          ) : null }
+          { props.instance.isPinned && props.instance.filePath ? (
+            <div className="d-flex" data-id="instanceContractFilePath" style={{ textAlign: "start", lineBreak: "anywhere" }}>
+              <label>
+                <b><FormattedMessage id="udapp.filePath" />:</b> {props.instance.filePath}
+              </label>
+            </div>
+          ) : null }
           {contractABI &&
             contractABI.map((funcABI, index) => {
-              if (funcABI.type !== "function") return null;
-              const isConstant =
-                funcABI.constant !== undefined ? funcABI.constant : false;
-              const lookupOnly =
-                funcABI.stateMutability === "view" ||
-                funcABI.stateMutability === "pure" ||
-                isConstant;
-              const inputs = props.getFuncABIInputs(funcABI);
+              if (funcABI.type !== 'function') return null
+              const isConstant = funcABI.constant !== undefined ? funcABI.constant : false
+              const lookupOnly = funcABI.stateMutability === 'view' || funcABI.stateMutability === 'pure' || isConstant
+              const inputs = props.getFuncABIInputs(funcABI)
 
               return (
                 <div key={index}>
                   <ContractGUI
+                    getVersion={props.getVersion}
                     funcABI={funcABI}
-                    clickCallBack={(
-                      valArray: { name: string; type: string }[],
-                      inputsValues: string
-                    ) => {
-                      runTransaction(
-                        lookupOnly,
-                        funcABI,
-                        valArray,
-                        inputsValues,
-                        index
-                      );
+                    clickCallBack={(valArray: {name: string; type: string}[], inputsValues: string) => {
+                      runTransaction(lookupOnly, funcABI, valArray, inputsValues, index)
                     }}
                     inputs={inputs}
                     evmBC={evmBC}
                     lookupOnly={lookupOnly}
                     key={index}
                   />
-                  <div className="udapp_value" data-id="udapp_value">
-                    <TreeView id="treeView">
-                      {Object.keys(props.instance.decodedResponse || {}).map(
-                        (key) => {
-                          const funcIndex = index.toString();
-                          const response = props.instance.decodedResponse[key];
+                  {lookupOnly && (
+                    <div className="udapp_value" data-id="udapp_value">
+                      <TreeView id="treeView">
+                        {Object.keys(props.instance.decodedResponse || {}).map((key) => {
+                          const funcIndex = index.toString()
+                          const response = props.instance.decodedResponse[key]
 
                           return key === funcIndex
-                            ? Object.keys(response || {}).map(
-                                (innerkey, index) => {
-                                  return renderData(
-                                    props.instance.decodedResponse[key][
-                                      innerkey
-                                    ],
-                                    response,
-                                    innerkey,
-                                    innerkey
-                                  );
-                                }
-                              )
-                            : null;
-                        }
-                      )}
-                    </TreeView>
-                  </div>
+                            ? Object.keys(response || {}).map((innerkey, index) => {
+                              return renderData(props.instance.decodedResponse[key][innerkey], response, innerkey, innerkey)
+                            })
+                            : null
+                        })}
+                      </TreeView>
+                    </div>
+                  )}
                 </div>
-              );
+              )
             })}
         </div>
         <div className="d-flex flex-column">
           <div className="d-flex flex-row justify-content-between mt-2">
             <div className="py-2 border-top d-flex justify-content-start flex-grow-1">
-              Low level interactions
+              <FormattedMessage id="udapp.lowLevelInteractions" />
             </div>
             <CustomTooltip
-              placement={"bottom-end"}
+              placement={'bottom-end'}
               tooltipClasses="text-wrap"
               tooltipId="receiveEthDocstoolTip"
-              tooltipText={"Click for docs about using 'receive'/'fallback'"}
+              tooltipText={<FormattedMessage id="udapp.tooltipText8" />}
             >
-              <a
-                href="https://solidity.readthedocs.io/en/v0.6.2/contracts.html#receive-ether-function"
-                target="_blank"
-                rel="noreferrer"
-              >
-                <i aria-hidden="true" className="fas fa-info my-2 mr-1"></i>
-              </a>
+              { // receive method added to solidity v0.6.x. use this as diff.
+                props.solcVersion.canReceive === false ? (
+                  <a href={`https://solidity.readthedocs.io/en/v${props.solcVersion.version}/contracts.html`} target="_blank" rel="noreferrer">
+                    <i aria-hidden="true" className="fas fa-info my-2 mr-1"></i>
+                  </a>
+                ) :<a href={`https://solidity.readthedocs.io/en/v${props.solcVersion.version}/contracts.html#receive-ether-function`} target="_blank" rel="noreferrer">
+                  <i aria-hidden="true" className="fas fa-info my-2 mr-1"></i>
+                </a>
+              }
             </CustomTooltip>
           </div>
           <div className="d-flex flex-column align-items-start">
@@ -351,20 +384,11 @@ export function UniversalDappUI (props: UdappProps) {
                 placement="bottom"
                 tooltipClasses="text-nowrap"
                 tooltipId="deployAndRunLLTxCalldataInputTooltip"
-                tooltipText="The Calldata to send to fallback function of the contract."
+                tooltipText={<FormattedMessage id="udapp.tooltipText9" />}
               >
-                <input
-                  id="deployAndRunLLTxCalldata"
-                  onChange={handleCalldataChange}
-                  className="udapp_calldataInput form-control"
-                />
+                <input id="deployAndRunLLTxCalldata" onChange={handleCalldataChange} className="udapp_calldataInput form-control" />
               </CustomTooltip>
-              <CustomTooltip
-                placement="right"
-                tooltipClasses="text-nowrap"
-                tooltipId="deployAndRunLLTxCalldataTooltip"
-                tooltipText="Send data to contract."
-              >
+              <CustomTooltip placement="right" tooltipClasses="text-nowrap" tooltipId="deployAndRunLLTxCalldataTooltip" tooltipText={<FormattedMessage id="udapp.tooltipText10" />}>
                 <button
                   id="deployAndRunLLTxSendTransaction"
                   data-id="pluginManagerSettingsDeployAndRunLLTxSendTransaction"
@@ -384,5 +408,5 @@ export function UniversalDappUI (props: UdappProps) {
         </div>
       </div>
     </div>
-  );
+  )
 }

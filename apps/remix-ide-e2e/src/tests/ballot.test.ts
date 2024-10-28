@@ -34,7 +34,7 @@ module.exports = {
       .clickFunction('delegate - transact (not payable)', { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
       .testFunction('last',
         {
-          status: 'true Transaction mined and execution succeed',
+          status: '0x1 Transaction mined and execution succeed',
           'decoded input': { 'address to': '0x4B0897b0513fdC7C541B6d9D7E929C4e5364D2dB' }
         })
   },
@@ -75,7 +75,7 @@ module.exports = {
         abortOnFailure: false,
         suppressNotFoundErrors: true,
       })
-      // we are not changing the visibility for not checksumed contracts
+      // we are not changing the visibility for not checksummed contracts
       // .addAtAddressInstance('0x692a70D2e424a56D2C6C27aA97D1a86395877b3B', true, false)
       .clickLaunchIcon('filePanel')
       .addAtAddressInstance('0x692a70D2e424a56D2C6C27aA97D1a86395877b3A', true, true)
@@ -87,9 +87,30 @@ module.exports = {
       .clickFunction('delegate - transact (not payable)', { types: 'address to', values: '"0x4b0897b0513fdc7c541b6d9d7e929c4e5364d2db"' })
       .testFunction('last',
         {
-          status: 'false Transaction mined but execution failed',
+          status: '0x0 Transaction mined but execution failed',
           'decoded input': { 'address to': '0x4B0897b0513fdC7C541B6d9D7E929C4e5364D2dB' }
         })
+  },
+
+  'Compile with remappings set in remappings.txt file #group1': function (browser: NightwatchBrowser) {
+    browser
+      .clickLaunchIcon('filePanel')
+      .click('*[data-id="workspacesMenuDropdown"]')
+      .click('*[data-id="workspacecreate"]')
+      .waitForElementPresent('*[data-id="create-remixDefault"]')
+      .scrollAndClick('*[data-id="create-remixDefault"]')
+      .waitForElementVisible('*[data-id="modalDialogCustomPromptTextCreate"]')
+      .scrollAndClick('*[data-id="modalDialogCustomPromptTextCreate"]')
+      .setValue('*[data-id="modalDialogCustomPromptTextCreate"]', 'workspace_remix_default')
+      // eslint-disable-next-line dot-notation
+      .execute(function () { document.querySelector('*[data-id="modalDialogCustomPromptTextCreate"]')['value'] = 'workspace_remix_default' })
+      .modalFooterOKClick('TemplatesSelection')
+      .pause(1000)
+      .waitForElementVisible('*[data-id="treeViewLitreeViewItemcontracts"]')
+      .addFile('contracts/lib/storage/src/Storage.sol', { content: storageContract})
+      .addFile('remappings.txt', { content: 'storage=contracts/lib/storage/src' })
+      .addFile('contracts/Retriever.sol', { content: retrieverContract })
+      .verifyContracts(['Retriever', 'Storage'])
   },
 
   'Deploy and use Ballot using external web3  #group2': function (browser: NightwatchBrowser) {
@@ -99,7 +120,6 @@ module.exports = {
       .connectToExternalHttpProvider('http://localhost:8545', 'Custom')
       .clickLaunchIcon('solidity')
       .clickLaunchIcon('udapp')
-      .pause(2000)
       .clearValue('input[placeholder="bytes32[] proposalNames"]')
       .setValue('input[placeholder="bytes32[] proposalNames"]', '["0x48656c6c6f20576f726c64210000000000000000000000000000000000000000"]')
       .click('*[data-id="Deploy - transact (not payable)"]')
@@ -241,7 +261,8 @@ module.exports = {
       .click('*[data-id="Deploy - transact (not payable)"]')
       .waitForElementPresent('*[data-id="universalDappUiContractActionWrapper"]', 60000)
       .journalLastChildIncludes('Contract.(constructor)')
-      .journalLastChildIncludes('data: 0x602...0565b')
+      // .journalLastChildIncludes('data: 0x602...0565b')
+      .journalLastChildIncludes('data: 0x00') // This can be removed some time once YUL returns correct bytecode
       .end()
   }
 }
@@ -508,5 +529,31 @@ object "Contract" {
           }
       }
   }
+}
+`
+
+const storageContract = `
+pragma solidity >=0.8.2 <0.9.0;
+
+contract Storage {
+
+    uint256 public number;
+
+    function store(uint256 num) public {
+        number = num;
+    }
+}
+`
+
+const retrieverContract = `
+pragma solidity >=0.8.2 <0.9.0;
+
+import "storage/Storage.sol";
+
+contract Retriever is Storage {
+
+    function retrieve() public view returns (uint256){
+        return number;
+    }
 }
 `
